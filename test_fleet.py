@@ -371,6 +371,30 @@ class Server(unittest.TestCase):
             finally:
                 srv.shutdown()
 
+    def test_title_art_is_served_by_exact_name_with_byte_ranges(self):
+        import http.client, threading
+        from http.server import ThreadingHTTPServer
+        with tempfile.TemporaryDirectory() as d:
+            srv = ThreadingHTTPServer(("127.0.0.1", 0), fd.make_handler(fd.Fleet([], d), {"localhost"}))
+            threading.Thread(target=srv.serve_forever, daemon=True).start()
+            try:
+                def get(path, rng=None):
+                    c = http.client.HTTPConnection("127.0.0.1", srv.server_address[1], timeout=5)
+                    c.request("GET", path, headers={"Range": rng} if rng else {})
+                    r = c.getresponse()
+                    return r.status, r.getheader("Content-Type"), r.getheader("Content-Range"), r.read()
+                size = (Path(fd.HERE) / "assets" / "fleet-title.mp4").stat().st_size
+                self.assertEqual(get("/assets/fleet-title.mp4")[:2], (200, "video/mp4"))
+                st, ct, cr, body = get("/assets/fleet-title.mp4", "bytes=0-1")              # Safari's first probe
+                self.assertEqual((st, cr, len(body)), (206, f"bytes 0-1/{size}", 2))
+                self.assertEqual(get("/assets/fleet-title.mp4", "bytes=-10")[2], f"bytes {size - 10}-{size - 1}/{size}")
+                self.assertEqual(get("/assets/fleet-title.mp4", f"bytes={size}-")[0], 416)
+                self.assertEqual(get("/assets/fleet-star-ink.webp")[1], "image/webp")
+                for path in ("/assets/../fleet_dashboard.py", "/assets/x.mp4", "/assets/", "/assets/fleet-title.mp4/x"):
+                    self.assertTrue(get(path)[1].startswith("text/html"), path)
+            finally:
+                srv.shutdown()
+
     def test_host_header_allowlist_blocks_dns_rebinding(self):
         names = {"localhost", "macbookpro", "macbookpro.local"}
         for ok in ("127.0.0.1:8766", "localhost:8766", "LOCALHOST", "[::1]:8766", "10.0.0.20:8766", "100.64.0.9", "macbookpro.local:8766"):

@@ -16,9 +16,24 @@
   --bg:#17130F; --card:#211B16; --ink:#F1E9DA; --dim:#A39684; --line:#3A3129;
   --pc:#6AA6E8; --mini:#B48AD9; --ok:#5CC48A; --warn:#F08A4B; --amber:#E7B24A; --fix:#F06B5E; } }
 *{box-sizing:border-box} body{margin:0;background:var(--page-bg);background-attachment:fixed;min-height:100vh;color:var(--ink);font:15px/1.45 var(--sans)}
-main{max-width:1720px;margin:0 auto;padding:22px 16px 40px;position:relative;z-index:2}
-#glyphs{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;display:none}
-:root[data-glyph] #glyphs{display:block}
+main{max-width:1720px;margin:0 auto;padding:22px 16px 40px;position:relative}  /* no z-index: a stacking context would cut the title video's screen blend off from the page */
+/* Glyph themes: the Forge test bench's look. Stardust and twinkling sparkles in both; embers and a warm glow under
+   Glyph Basalt; the title as Glyph Grid Studio charcoal glyph art (tools/build_charcoal.py). */
+#dust,#sparkles,#embers,#glow{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;display:none}
+:root[data-glyph] #dust,:root[data-glyph] #sparkles{display:block}
+:root[data-glyph][data-theme="basalt"] #embers,:root[data-glyph][data-theme="basalt"] #glow{display:block}
+#glow{top:auto;height:38vh;background:radial-gradient(70% 100% at 50% 100%,rgba(217,120,40,.16),rgba(217,162,59,.05) 45%,transparent 75%)}
+#sparkles span{position:absolute;line-height:1;animation:twinkle var(--d,5s) ease-in-out infinite;animation-delay:var(--o,0s)}
+@keyframes twinkle{0%,100%{opacity:.12;transform:scale(.7)}50%{opacity:.95;transform:scale(1.15)}}
+.gt{display:none;align-items:center}
+.gt img,.gt video{display:none;height:var(--h);width:auto;pointer-events:none}
+.gt .star{--h:58px;margin:-12px -6px -12px -10px} .gt .title{--h:46px}
+:root[data-glyph] .gt{display:inline-flex}
+:root[data-glyph] .h1-text{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:root[data-glyph][data-theme="basalt"] .gt video{display:block;mix-blend-mode:screen}
+:root[data-glyph][data-theme="cream"] .gt img.ink{display:block}
+@media (prefers-reduced-motion: reduce){#sparkles span{animation:none}
+  :root[data-glyph][data-theme="basalt"] .gt video{display:none} :root[data-glyph][data-theme="basalt"] .gt img.gold{display:block}}
 header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
 h1{font-size:26px;margin:0;letter-spacing:-.01em} .sub{color:var(--dim)}
 .live{display:inline-flex;align-items:center;gap:7px;color:var(--dim);font-size:13px;margin-left:auto}
@@ -142,10 +157,10 @@ footer{margin-top:18px;font-size:12px;color:var(--dim)}
 </style>
 </head>
 <body>
-<canvas id="glyphs" aria-hidden="true"></canvas>
+<canvas id="dust" aria-hidden="true"></canvas><div id="sparkles" aria-hidden="true"></div><canvas id="embers" aria-hidden="true"></canvas><div id="glow" aria-hidden="true"></div>
 <main>
   <header>
-    <h1>Fleet</h1><span class="sub" id="sub">all machines, live</span>
+    <h1><span class="h1-text">Fleet</span><span class="gt" aria-hidden="true"><video class="star" data-src="/assets/fleet-star.mp4" muted loop playsinline preload="none"></video><img class="star gold" data-src="/assets/fleet-star.webp" alt=""><img class="star ink" data-src="/assets/fleet-star-ink.webp" alt=""><video class="title" data-src="/assets/fleet-title.mp4" muted loop playsinline preload="none"></video><img class="title gold" data-src="/assets/fleet-title.webp" alt=""><img class="title ink" data-src="/assets/fleet-title-ink.webp" alt=""></span></h1><span class="sub" id="sub">all machines, live</span>
     <div class="seg" role="group" aria-label="Chart window" id="windows">
       <button type="button" data-win="live">15 min</button>
       <button type="button" data-win="long">24 h</button>
@@ -404,36 +419,70 @@ function pick(groupId, attr, value, store){
 $("devices").addEventListener("click", e => { const b = e.target.closest("[data-id]"); if (b) openDev(b.dataset.id); });
 $("detail").addEventListener("click", e => { if (e.target.closest("[data-close]")) { const id = S.open; openDev(S.open); const b = $("devices").querySelector(`[data-id="${CSS.escape(id)}"]`); if (b) b.focus(); } });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && S.open) openDev(S.open); });
-/* Glyph themes: Cream or Basalt with a Glyph Grid Studio backdrop, a radial field of the studio's "gradient" ramp
-   drawn once on a canvas behind the page (again only on resize), so a live update costs nothing extra. */
-const RAMP = "  .,:;-~+=<>*oOwmM8B#%@";
-function drawGlyphs(){
-  const c = $("glyphs"), root = document.documentElement;
-  if (!root.dataset.glyph) return;
-  const dpr = devicePixelRatio || 1, W = innerWidth, H = innerHeight;
-  c.width = W * dpr; c.height = H * dpr;
-  const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
-  const basalt = root.dataset.theme === "basalt", cw = 7, ch = 12;
-  g.font = `11px ui-monospace, Menlo, monospace`; g.textBaseline = "top";
-  g.fillStyle = basalt ? "rgba(230,194,119,.30)" : "rgba(51,43,29,.26)";
-  const cx = W * .72, cy = H * .42, R = Math.max(W, H) * .62;
-  const hash = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
-  for (let y = 0; y < H; y += ch) for (let x = 0; x < W; x += cw) {
-    const dx = (x - cx) / R, dy = (y - cy) / R, r = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
-    const rings = .5 + .5 * Math.cos(r * 22), rays = Math.pow(.5 + .5 * Math.cos(a * 16), 3), fall = Math.max(0, 1 - r * 1.05);
-    let v = fall * fall * (.4 * rings + .6 * rays) + fall * .25 + (hash(x, y) - .5) * .3;
-    if (v < .16) continue;
-    g.fillText(RAMP[Math.min(RAMP.length - 1, Math.floor(v * RAMP.length * .9))], x, y);
+/* Glyph themes, after the Forge test bench: stardust (drawn once per resize), twinkling sparkles (CSS), embers
+   (animated, Glyph Basalt only, stopped in every other theme) and the glyph-art title, whose files load only when a
+   Glyph theme is first chosen. */
+const glyph = {sparkles: false, embers: null};
+function glyphTheme(){ const r = document.documentElement; return r.dataset.glyph ? r.dataset.theme : null; }
+function drawDust(){
+  const t = glyphTheme(); if (!t) return;
+  const cv = $("dust"), cx = cv.getContext("2d"), dpr = Math.min(2, devicePixelRatio || 1), w = innerWidth, h = innerHeight;
+  cv.width = w * dpr; cv.height = h * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0); cx.clearRect(0, 0, w, h);
+  const warm = t === "basalt" ? "230,194,119" : "84,101,63", cool = t === "basalt" ? "248,238,214" : "51,43,29";
+  for (let i = 0, n = Math.round(w * h / 2600); i < n; i++) {
+    const x = Math.random() * w, y = Math.random() * h, r = Math.random() < .9 ? .45 + Math.random() * .5 : .9 + Math.random() * .7;
+    cx.fillStyle = `rgba(${Math.random() < .6 ? warm : cool},${.08 + Math.random() * .26})`; cx.beginPath(); cx.arc(x, y, r, 0, 6.283); cx.fill();
   }
 }
+function drawSparkles(){
+  const t = glyphTheme(), field = $("sparkles"); if (!t) return;
+  const colors = t === "basalt" ? ["#f4c46a", "#e6c277", "#d9a23b", "#f8eed6", "#e89a4a"] : ["#54653f", "#5e3a24", "#8a5a10", "#6a7a52"];
+  if (!glyph.sparkles) {
+    const glyphs = ["✦", "✧", "⋆", "★", "✦", "⋆"];
+    for (let i = 0; i < 34; i++) { const s = document.createElement("span"); s.textContent = glyphs[i % glyphs.length];
+      s.style.left = (Math.random() * 100) + "%"; s.style.top = (Math.random() * 100) + "%"; s.style.fontSize = (7 + Math.random() * 10) + "px";
+      s.style.setProperty("--d", (3 + Math.random() * 4).toFixed(2) + "s"); s.style.setProperty("--o", "-" + (Math.random() * 6).toFixed(2) + "s");
+      field.appendChild(s); }
+    glyph.sparkles = true;
+  }
+  [...field.children].forEach((s, i) => { const c = colors[i % colors.length]; s.style.color = c; s.style.textShadow = t === "basalt" ? `0 0 8px ${c}` : "none"; });
+}
+function embers(on){
+  if (!on) { if (glyph.embers) { glyph.embers.stop(); glyph.embers = null; } return; }
+  if (glyph.embers) return;
+  const cv = $("embers"), cx = cv.getContext("2d"), still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let w = 0, h = 0, run = true, raf = 0, last = 0; const ps = [];
+  const size = () => { const dpr = Math.min(2, devicePixelRatio || 1); w = innerWidth; h = innerHeight; cv.width = w * dpr; cv.height = h * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0); };
+  const spawn = (p, anyY) => Object.assign(p, {x: Math.random() * w, y: anyY ? Math.random() * h : h + 10, r: .6 + Math.random() * 1.9,
+    vy: .18 + Math.random() * .55, sway: Math.random() * 6.28, hot: Math.random() < .35, a: .25 + Math.random() * .6});
+  size(); addEventListener("resize", size); for (let i = 0; i < 46; i++) ps.push(spawn({}, true));
+  const draw = () => { cx.clearRect(0, 0, w, h); cx.globalCompositeOperation = "lighter";
+    for (const p of ps) { const a = p.a * Math.min(1, p.y / (h * .35)), g = cx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4);
+      g.addColorStop(0, p.hot ? `rgba(255,214,140,${a})` : `rgba(232,142,52,${a})`); g.addColorStop(1, "rgba(217,100,30,0)");
+      cx.fillStyle = g; cx.beginPath(); cx.arc(p.x, p.y, p.r * 4, 0, 6.283); cx.fill(); }
+    cx.globalCompositeOperation = "source-over"; };
+  const frame = t => { if (!run) return; raf = requestAnimationFrame(frame); if (t - last < 33) return; last = t;
+    for (const p of ps) { p.y -= p.vy; p.sway += .02; p.x += Math.sin(p.sway) * .25; if (p.y < -12) spawn(p, false); } draw(); };
+  if (still) draw(); else raf = requestAnimationFrame(frame);
+  glyph.embers = {stop: () => { run = false; cancelAnimationFrame(raf); removeEventListener("resize", size); cx.clearRect(0, 0, w, h); }};
+}
+function glyphTitle(){
+  const t = glyphTheme(); if (!t) return;
+  document.querySelectorAll(".gt [data-src]").forEach(m => {
+    const want = m.tagName === "VIDEO" ? t === "basalt" : m.classList.contains(t === "basalt" ? "gold" : "ink");
+    if (want && !m.src) m.src = m.dataset.src;
+    if (m.tagName === "VIDEO") { if (want) m.play().catch(() => {}); else m.pause(); }
+  });
+}
+function applyGlyph(){ drawDust(); drawSparkles(); glyphTitle(); embers(glyphTheme() === "basalt"); }
 let glyphTimer = 0;
-addEventListener("resize", () => { clearTimeout(glyphTimer); glyphTimer = setTimeout(drawGlyphs, 150); });
+addEventListener("resize", () => { clearTimeout(glyphTimer); glyphTimer = setTimeout(drawDust, 150); });
 function setTheme(t){
   const root = document.documentElement, glyph = (t || "").startsWith("glyph-"), base = glyph ? t.slice(6) : t;
   if (base) root.dataset.theme = base; else delete root.dataset.theme;
   if (glyph) root.dataset.glyph = "on"; else delete root.dataset.glyph;
   pick("themes", "theme", t || "", "fleet-dash-theme");
-  drawGlyphs();
+  applyGlyph();
 }
 function setWin(w){ S.win = w; pick("windows", "win", w, "fleet-dash-window"); if (S.devices.length) render(); }
 document.querySelectorAll("#themes button").forEach(b => b.addEventListener("click", () => setTheme(b.dataset.theme)));

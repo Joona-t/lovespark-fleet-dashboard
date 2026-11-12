@@ -35,8 +35,8 @@ Opus 5.5). It is part of [LoveSpark](https://github.com/Joona-t), free and open-
 - **15-minute and 24-hour charts**, history kept on disk, so a restart loses nothing.
 - **2x2 layout**: one machine per corner; tap a machine for its full stats. Nine themes: Paper, four Korean ones in Lexend
   (서울 Seoul Y2K, 깅엄 Gingham, 모찌 Holo Mochi, the dark 네온 Neon Usagi), and four from LoveSpark's Glyph Grid
-  Studio: Cream, the dark Basalt, and Glyph Cream and Glyph Basalt with the studio's glyph art behind the page
-  (Cinzel and EB Garamond, film grain).
+  Studio: Cream, the dark Basalt, and Glyph Cream and Glyph Basalt: stardust, twinkling sparkles, embers and a
+  charcoal glyph-art title made with the studio's renderer (Cinzel and EB Garamond, film grain).
 - **Laptops welcome**: a laptop pushes its readings while it is around instead of having to be reachable.
 
 ![The full stats of a dual RTX 3090 machine: per-core CPU, memory, both GPUs with charts, sensors and storage](docs/full-stats.png)

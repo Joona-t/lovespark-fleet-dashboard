@@ -1,5 +1,10 @@
 # Bugs & Iterations — Fleet Dashboard
 
+## 2026-11-12: v1.3.0, Glyph themes with stardust, embers and glyph-art titles
+
+- **What:** Glyph Cream and Glyph Basalt now have stardust, twinkling sparkles, embers and a glow (Basalt only, stopped in every other theme), and the title as charcoal glyph art built with Glyph Grid Studio's renderer (`tools/build_charcoal.py`): a looping video in Basalt, dark-ink stills on Cream, loaded only when a Glyph theme is chosen. An exact-name `/assets/` route serves them, with byte ranges for Safari.
+- **Verify:** `test_title_art_is_served_by_exact_name_with_byte_ranges`; 42 tests pass. Ongoing cost per theme in BENCHMARKS.md.
+
 ## 2026-11-12: v1.2.1, Lexend for the Korean themes
 
 - **What:** the four Korean themes read in Lexend (SIL OFL, variable 300–700), served by the same exact-name font route.

@@ -24,6 +24,7 @@ import collections
 import ipaddress
 import json
 import math
+import re
 import os
 import socket
 import stat
@@ -38,6 +39,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 PAGE = HERE / "fleet_dashboard.html"
 FONTS = {"cinzel.woff2", "ebgaramond.woff2", "lexend.woff2"}   # theme fonts (SIL OFL, fonts/OFL.txt); nothing else is served
+# The Glyph themes' title art (tools/build_charcoal.py): exact names only, like the fonts.
+ASSETS = {f"{n}{v}": t for n in ("fleet-title", "fleet-star")
+          for v, t in ((".webp", "image/webp"), ("-ink.webp", "image/webp"), (".mp4", "video/mp4"))}
 
 PUSH = HERE / "push"                 # one named pipe per pushed device: push/<id>.fifo
 BEAT = HERE / "heartbeat.txt"        # rewritten once a minute, so a supervisor can see the server is doing its job
@@ -522,6 +526,25 @@ def make_handler(fleet, names):
         def log_message(self, *a):
             pass
 
+        def _ranged(self, body, ctype):
+            """Answer a byte Range (Safari will not play video without it), else the whole file."""
+            m = re.match(r"bytes=(\d*)-(\d*)$", self.headers.get("Range") or "")
+            if not m or not (m.group(1) or m.group(2)):
+                return self._send(body, ctype)
+            size = len(body)
+            a, b = (int(m.group(1)), min(int(m.group(2) or size - 1), size - 1)) if m.group(1) else (max(size - int(m.group(2)), 0), size - 1)
+            if a > b or a >= size:
+                self.send_response(416)
+                self.send_header("Content-Range", f"bytes */{size}")
+                return self.end_headers()
+            self.send_response(206)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Content-Range", f"bytes {a}-{b}/{size}")
+            self.send_header("Content-Length", str(b - a + 1))
+            self.end_headers()
+            self.wfile.write(body[a:b + 1])
+
         def _send(self, body, ctype):
             self.send_response(200)
             self.send_header("Content-Type", ctype)
@@ -536,6 +559,8 @@ def make_handler(fleet, names):
                 return self._send(json.dumps(fleet.snapshot()).encode(), "application/json")
             if self.path.startswith("/fonts/") and self.path[7:] in FONTS:           # exact names only: no paths, no ..
                 return self._send((HERE / "fonts" / self.path[7:]).read_bytes(), "font/woff2")
+            if self.path.startswith("/assets/") and self.path[8:] in ASSETS:
+                return self._ranged((HERE / "assets" / self.path[8:]).read_bytes(), ASSETS[self.path[8:]])
             if self.path != "/events":
                 return self._send(PAGE.read_bytes(), "text/html; charset=utf-8")      # re-read: page edits show on refresh
             self.send_response(200)

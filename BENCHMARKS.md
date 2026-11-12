@@ -71,3 +71,18 @@ The glyph backdrop is drawn once on a canvas when the theme is chosen or the win
 update. A second run (5 rounds, ~30 updates each; this Mac was busier, so frames took ~45–50 ms for every theme,
 Paper included) showed the same script time for Glyph Cream and Glyph Basalt as for Cream, Basalt and Paper: 0.4 ms
 in the grid, ~3 ms with full stats open. No measurable difference.
+
+### What a theme costs while the page stays open
+
+`bench/theme_idle_cost.mjs <dashboard-url>`: Chrome's main-thread time per second, live updates and animations
+included, 5 rounds x 15 s alternating the themes:
+
+| Theme | Main thread | Of which script |
+|---|---|---|
+| Paper | 18.2 ms/s | 1.1 |
+| Basalt | 20.6 ms/s | 1.0 |
+| Glyph Basalt (embers, sparkles, title video) | 26.2 ms/s | 3.2 |
+| Cream | 16.9 ms/s | 0.9 |
+| Glyph Cream (sparkles, stills) | 27.5 ms/s | 0.9 |
+
+The moving parts cost about 1% of one core; with "reduce motion" on they are stills.
