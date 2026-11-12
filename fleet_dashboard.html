@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fleet</title>
 <style>
-/* Tokens and Korean themes are the ones from llms-explained/scripts/voice_dashboard.html (contrast-checked there). */
+/* Tokens and Korean themes are shared with LoveSpark's other dashboards (contrast-checked there). */
 :root{
   --bg:#F7F0E1; --card:#FFFDF7; --ink:#2E2620; --dim:#6F6558; --line:#E6DCC8;
   --pc:#2F6FB0; --mini:#7A4E9E; --ok:#2E8B57; --warn:#C2410C; --amber:#C98A16; --fix:#B42318;
@@ -109,6 +109,30 @@ footer{margin-top:18px;font-size:12px;color:var(--dim)}
 :root[data-theme="kr-neon"] .card{border-color:rgba(255,70,214,.45);border-radius:16px}
 :root[data-theme="kr-neon"] .badge{color:#120b18}
 :root[data-theme="kr-neon"] .dot{box-shadow:0 0 10px #ff46d6}
+
+/* Cream and Basalt: the themes of LoveSpark's Glyph Grid Studio site, tokens copied as they are.
+   Cinzel for headings, EB Garamond for text (SIL OFL, served from /fonts), film grain over the page. */
+@font-face{font-family:"Cinzel";src:url(/fonts/cinzel.woff2) format("woff2");font-weight:400 700;font-display:swap}
+@font-face{font-family:"EB Garamond";src:url(/fonts/ebgaramond.woff2) format("woff2");font-weight:400 600;font-display:swap}
+:root[data-theme="cream"]{
+  --bg:#efe6d2; --card:#f3ecda; --ink:#332b1d; --dim:#5e5237; --line:#d8c9a6;
+  --pc:#54653f; --mini:#5e3a24; --ok:#3d6b2f; --warn:#9a4a10; --amber:#8a5a10; --fix:#9a2f2a;
+  --page-bg:linear-gradient(170deg,#f4ecda 0%,#ece2cc 60%,#e7dcc2 100%); --heading:#2a2418; --grain:.30; color-scheme:light }
+:root[data-theme="basalt"]{
+  --bg:#16171a; --card:#1f2125; --ink:#c9cdd3; --dim:#9aa0a8; --line:#3a3e44;
+  --pc:#d9a23b; --mini:#e6c277; --ok:#7fc79a; --warn:#f08a4b; --amber:#e7b24a; --fix:#ff7a6b;
+  --page-bg:radial-gradient(140% 120% at 50% -10%,#24262b 0%,#181a1e 55%,#0f1012 100%); --heading:#e6d6ad; --grain:.5; color-scheme:dark }
+:root[data-theme="cream"],:root[data-theme="basalt"]{--sans:"EB Garamond",Georgia,serif}
+:root[data-theme="cream"] body,:root[data-theme="basalt"] body{font-size:16px}
+:root[data-theme="cream"] :is(h1,h3,.badge,.k),:root[data-theme="basalt"] :is(h1,h3,.badge,.k){font-family:"Cinzel",Georgia,serif}
+:root[data-theme="cream"] h1,:root[data-theme="basalt"] h1{color:var(--heading);letter-spacing:.04em}
+:root[data-theme="cream"] :is(.v,td,.cap),:root[data-theme="basalt"] :is(.v,td,.cap){font-variant-numeric:lining-nums tabular-nums}
+:root[data-theme="cream"] .card{border-color:#d8c9a6;border-radius:12px;box-shadow:0 4px 12px rgba(120,90,40,.16)}
+:root[data-theme="cream"] .badge{background:#5e3a24;color:#f4ecda}
+:root[data-theme="basalt"] .card{background:linear-gradient(180deg,#23252a,#191b1f);border-color:#3a3e44;border-radius:5px;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+:root[data-theme="basalt"] .badge{background:linear-gradient(180deg,#d9a23b,#a8761f);color:#16171a}
+:root[data-theme="cream"] body::after,:root[data-theme="basalt"] body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:160px 160px;mix-blend-mode:soft-light;opacity:calc(.10 * (var(--grain) + .45))}
 @media (prefers-reduced-motion: reduce){ .dot{animation:none} .bar>i,.cores>i{transition:none} }
 </style>
 </head>
@@ -126,6 +150,8 @@ footer{margin-top:18px;font-size:12px;color:var(--dim)}
       <button type="button" data-theme="kr-gingham"><span class="sw" style="background:linear-gradient(135deg,#fffafc 50%,#f6a6c4 50%)"></span>깅엄 Gingham</button>
       <button type="button" data-theme="kr-holo"><span class="sw" style="background:linear-gradient(135deg,#faf7ff 50%,#9b6cf0 50%)"></span>모찌 Holo Mochi</button>
       <button type="button" data-theme="kr-neon"><span class="sw" style="background:linear-gradient(135deg,#120b18 50%,#ff46d6 50%)"></span>네온 Neon Usagi</button>
+      <button type="button" data-theme="cream"><span class="sw" style="background:linear-gradient(135deg,#efe6d2 50%,#54653f 50%)"></span>Cream</button>
+      <button type="button" data-theme="basalt"><span class="sw" style="background:linear-gradient(135deg,#16171a 50%,#d9a23b 50%)"></span>Basalt</button>
     </div>
     <span class="live"><span class="dot stale" id="dot"></span><span id="age">connecting…</span></span>
   </header>

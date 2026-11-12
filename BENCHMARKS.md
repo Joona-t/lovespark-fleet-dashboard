@@ -45,3 +45,22 @@ PowerShell were killed.
 
 - Netdata: 1–5% of one core per node with defaults ([Netdata docs](https://learn.netdata.cloud/docs/netdata-agent/resource-utilization/cpu)).
 - Beszel: ~3–23 MB of memory, under 0.1% CPU idle (third-party write-ups, e.g. [RamNode](https://ramnode.com/guides/beszel)).
+
+## The page: one live update, per theme
+
+`bench/page_latency.mjs <dashboard-url>`: headless Chrome at 1440x1000 @2x, 5 rounds alternating 7 themes in two
+views, ~30 updates per theme and view. js = `render()` time; frame = from the event to the second animation frame after
+it (so its floor is two frames, ~25 ms at 60 Hz).
+
+| Theme | js, grid | js, full stats | frame (median) |
+|---|---|---|---|
+| Paper | 0.4 ms | 1.8 ms | 26 ms |
+| Cream | 0.5 ms | 1.9 ms | 26–28 ms |
+| Basalt | 0.5 ms | 2.0 ms | 25–27 ms |
+| Seoul Y2K | 0.4 ms | 1.9 ms | 24 ms |
+| Gingham | 0.4 ms | 1.8 ms | 24–26 ms |
+| Holo Mochi | 0.4 ms | 1.8 ms | 25–27 ms |
+| Neon Usagi | 0.4 ms | 1.7 ms | 25–27 ms |
+
+No measurable difference between themes: every update is painted within the next two frames. p95 stays under 4 ms of
+script and 34 ms to a frame. Server to browser was ~2 ms median on a home LAN (the two clocks agreed to ±100 ms only).

@@ -33,8 +33,9 @@ Opus 5.5). It is part of [LoveSpark](https://github.com/Joona-t), free and open-
 - **Alerts**: hot GPU or CPU, VRAM or memory nearly full, low disk, a stopped fan at temperature, thermal throttling,
   a machine offline.
 - **15-minute and 24-hour charts**, history kept on disk, so a restart loses nothing.
-- **2x2 layout**: one machine per corner; tap a machine for its full stats. Five themes: Paper and four Korean ones
-  (서울 Seoul Y2K, 깅엄 Gingham, 모찌 Holo Mochi and the dark 네온 Neon Usagi).
+- **2x2 layout**: one machine per corner; tap a machine for its full stats. Seven themes: Paper, four Korean ones
+  (서울 Seoul Y2K, 깅엄 Gingham, 모찌 Holo Mochi, the dark 네온 Neon Usagi), and Cream and the dark Basalt
+  from LoveSpark's Glyph Grid Studio (Cinzel and EB Garamond, film grain).
 - **Laptops welcome**: a laptop pushes its readings while it is around instead of having to be reachable.
 
 ![The full stats of a dual RTX 3090 machine: per-core CPU, memory, both GPUs with charts, sensors and storage](docs/full-stats.png)
@@ -113,6 +114,10 @@ CPU an agent costs the machine it watches, per 3-second tick:
 | Linux, 32 threads, two RTX 3090s | **16 ms** (0.5% of one core) | was 56 ms; NVML instead of two `nvidia-smi` launches cut 45 ms to 2 ms |
 | Mac mini (M4) | ~61 ms | SMC and IOReport in-process; slow sensors every third tick |
 | Windows, 12 threads, RTX 5060 Ti | ~78 ms including WMI (~1.55 s a minute) | |
+
+In the browser, one live update takes under 1 ms of script in the grid and about 2 ms with a machine's full stats
+open, and reaches the screen within the next two frames (~25 ms at 60 Hz) in every theme; themes make no measurable
+difference (`bench/page_latency.mjs`, 5 rounds, ~30 updates per theme).
 
 We also measured the design itself against polling over a new SSH connection every tick (68 ms, 3x the latency) and
 over a reused connection (57 ms): streaming one session is as cheap as the best polling and the freshest. The scripts

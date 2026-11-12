@@ -351,6 +351,26 @@ class Server(unittest.TestCase):
         self.assertGreater(tried, 1500)
         self.assertGreater(accepted, tried // 2)                   # hostile fields are dropped, the sample still counts
 
+    def test_only_the_two_theme_fonts_are_served(self):
+        import http.client, threading
+        from http.server import ThreadingHTTPServer
+        with tempfile.TemporaryDirectory() as d:
+            srv = ThreadingHTTPServer(("127.0.0.1", 0), fd.make_handler(fd.Fleet([], d), {"localhost"}))
+            threading.Thread(target=srv.serve_forever, daemon=True).start()
+            try:
+                def get(path):
+                    c = http.client.HTTPConnection("127.0.0.1", srv.server_address[1], timeout=5)
+                    c.request("GET", path)
+                    r = c.getresponse()
+                    return r.getheader("Content-Type"), r.read()
+                for name in ("cinzel.woff2", "ebgaramond.woff2"):
+                    ctype, body = get("/fonts/" + name)
+                    self.assertEqual((ctype, body[:4]), ("font/woff2", b"wOF2"))
+                for path in ("/fonts/../fleet_dashboard.py", "/fonts/OFL.txt", "/fonts/%2e%2e/test_fleet.py", "/fonts/", "/fonts/cinzel.woff2/x"):
+                    self.assertTrue(get(path)[0].startswith("text/html"), path)      # the page, never the file
+            finally:
+                srv.shutdown()
+
     def test_host_header_allowlist_blocks_dns_rebinding(self):
         names = {"localhost", "macbookpro", "macbookpro.local"}
         for ok in ("127.0.0.1:8766", "localhost:8766", "LOCALHOST", "[::1]:8766", "10.0.0.20:8766", "100.64.0.9", "macbookpro.local:8766"):

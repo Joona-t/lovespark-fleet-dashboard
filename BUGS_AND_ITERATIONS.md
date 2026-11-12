@@ -1,5 +1,10 @@
 # Bugs & Iterations — Fleet Dashboard
 
+## 2026-11-12: v1.1.0, Cream and Basalt themes
+
+- **What:** two themes from LoveSpark's Glyph Grid Studio: Cream (aged paper, sage) and Basalt (dark stone, ember gold), with Cinzel and EB Garamond (SIL OFL, `fonts/OFL.txt`) served by an exact-name `/fonts/` route, lining figures and film grain.
+- **Verify:** `test_only_the_two_theme_fonts_are_served` (two names serve as font/woff2; `..`, encoded paths and other names get the page); 41 tests pass. Page cost per theme measured in BENCHMARKS.md: no measurable difference.
+
 ## 2026-11-12: v1.0.0, first public release
 
 - **What:** the dashboard we run on our own Macs, Linux and Windows machines, released with the machine list moved to `devices.json` (not in git; `devices.example.json` shows the shape). Without one it shows the machine it runs on.

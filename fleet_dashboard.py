@@ -2,7 +2,7 @@
 
     python3 fleet_dashboard.py [--here ID] [--port 8766] [--host 127.0.0.1]
 
-Data flow (same engine as llms-explained/scripts/voice_dashboard.py, generalised):
+Data flow:
 
     agent on each machine  --one JSON line per tick-->  one reader thread per machine  -->  Fleet (state + history)
     agent_mac.py   (the Mac named by --here: local process; other Macs: over SSH or pushed)  |-- /events     Server-Sent Events
@@ -37,6 +37,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 PAGE = HERE / "fleet_dashboard.html"
+FONTS = {"cinzel.woff2", "ebgaramond.woff2"}       # the Cream and Basalt themes' serifs (SIL OFL, fonts/OFL.txt); nothing else is served
 
 PUSH = HERE / "push"                 # one named pipe per pushed device: push/<id>.fifo
 BEAT = HERE / "heartbeat.txt"        # rewritten once a minute, so a supervisor can see the server is doing its job
@@ -533,6 +534,8 @@ def make_handler(fleet, names):
                 return self.send_error(403, "Host not allowed (see --allow-host)")
             if self.path == "/api/state":
                 return self._send(json.dumps(fleet.snapshot()).encode(), "application/json")
+            if self.path.startswith("/fonts/") and self.path[7:] in FONTS:           # exact names only: no paths, no ..
+                return self._send((HERE / "fonts" / self.path[7:]).read_bytes(), "font/woff2")
             if self.path != "/events":
                 return self._send(PAGE.read_bytes(), "text/html; charset=utf-8")      # re-read: page edits show on refresh
             self.send_response(200)
