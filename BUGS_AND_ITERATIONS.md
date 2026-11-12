@@ -1,5 +1,10 @@
 # Bugs & Iterations — Fleet Dashboard
 
+## 2026-11-12: v1.2.1, Lexend for the Korean themes
+
+- **What:** the four Korean themes read in Lexend (SIL OFL, variable 300–700), served by the same exact-name font route.
+- **Verify:** `test_only_the_theme_fonts_are_served` covers the three font files; 41 tests pass.
+
 ## 2026-11-12: v1.2.0, Glyph Cream and Glyph Basalt
 
 - **What:** Cream and Basalt with Glyph Grid Studio's glyph art behind the page: a radial field of the studio's gradient character ramp on a canvas, drawn once per theme change or resize.

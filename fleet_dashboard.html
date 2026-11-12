@@ -116,6 +116,9 @@ footer{margin-top:18px;font-size:12px;color:var(--dim)}
    Cinzel for headings, EB Garamond for text (SIL OFL, served from /fonts), film grain over the page. */
 @font-face{font-family:"Cinzel";src:url(/fonts/cinzel.woff2) format("woff2");font-weight:400 700;font-display:swap}
 @font-face{font-family:"EB Garamond";src:url(/fonts/ebgaramond.woff2) format("woff2");font-weight:400 600;font-display:swap}
+@font-face{font-family:"Lexend";src:url(/fonts/lexend.woff2) format("woff2");font-weight:300 700;font-display:swap}
+/* The Korean themes read in Lexend, as on LoveSpark Papers. */
+:root[data-theme^="kr-"]{--sans:"Lexend","Avenir Next",-apple-system,system-ui,sans-serif}
 :root[data-theme="cream"]{
   --bg:#efe6d2; --card:#f3ecda; --ink:#332b1d; --dim:#5e5237; --line:#d8c9a6;
   --pc:#54653f; --mini:#5e3a24; --ok:#3d6b2f; --warn:#9a4a10; --amber:#8a5a10; --fix:#9a2f2a;

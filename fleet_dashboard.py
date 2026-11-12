@@ -37,7 +37,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 PAGE = HERE / "fleet_dashboard.html"
-FONTS = {"cinzel.woff2", "ebgaramond.woff2"}       # the Cream and Basalt themes' serifs (SIL OFL, fonts/OFL.txt); nothing else is served
+FONTS = {"cinzel.woff2", "ebgaramond.woff2", "lexend.woff2"}   # theme fonts (SIL OFL, fonts/OFL.txt); nothing else is served
 
 PUSH = HERE / "push"                 # one named pipe per pushed device: push/<id>.fifo
 BEAT = HERE / "heartbeat.txt"        # rewritten once a minute, so a supervisor can see the server is doing its job

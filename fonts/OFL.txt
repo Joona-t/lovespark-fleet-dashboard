@@ -1,5 +1,6 @@
 Cinzel: Copyright 2020 The Cinzel Project Authors (https://github.com/NDISCOVER/Cinzel)
 EB Garamond: Copyright 2017 The EB Garamond Project Authors (https://github.com/octaviopardo/EBGaramond12)
+Lexend: Copyright 2018 The Lexend Project Authors (https://github.com/googlefonts/lexend)
 
 These Font Software are licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

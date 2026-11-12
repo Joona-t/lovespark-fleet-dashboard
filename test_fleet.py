@@ -351,7 +351,7 @@ class Server(unittest.TestCase):
         self.assertGreater(tried, 1500)
         self.assertGreater(accepted, tried // 2)                   # hostile fields are dropped, the sample still counts
 
-    def test_only_the_two_theme_fonts_are_served(self):
+    def test_only_the_theme_fonts_are_served(self):
         import http.client, threading
         from http.server import ThreadingHTTPServer
         with tempfile.TemporaryDirectory() as d:
@@ -363,7 +363,7 @@ class Server(unittest.TestCase):
                     c.request("GET", path)
                     r = c.getresponse()
                     return r.getheader("Content-Type"), r.read()
-                for name in ("cinzel.woff2", "ebgaramond.woff2"):
+                for name in ("cinzel.woff2", "ebgaramond.woff2", "lexend.woff2"):
                     ctype, body = get("/fonts/" + name)
                     self.assertEqual((ctype, body[:4]), ("font/woff2", b"wOF2"))
                 for path in ("/fonts/../fleet_dashboard.py", "/fonts/OFL.txt", "/fonts/%2e%2e/test_fleet.py", "/fonts/", "/fonts/cinzel.woff2/x"):

@@ -33,7 +33,7 @@ Opus 5.5). It is part of [LoveSpark](https://github.com/Joona-t), free and open-
 - **Alerts**: hot GPU or CPU, VRAM or memory nearly full, low disk, a stopped fan at temperature, thermal throttling,
   a machine offline.
 - **15-minute and 24-hour charts**, history kept on disk, so a restart loses nothing.
-- **2x2 layout**: one machine per corner; tap a machine for its full stats. Nine themes: Paper, four Korean ones
+- **2x2 layout**: one machine per corner; tap a machine for its full stats. Nine themes: Paper, four Korean ones in Lexend
   (서울 Seoul Y2K, 깅엄 Gingham, 모찌 Holo Mochi, the dark 네온 Neon Usagi), and four from LoveSpark's Glyph Grid
   Studio: Cream, the dark Basalt, and Glyph Cream and Glyph Basalt with the studio's glyph art behind the page
   (Cinzel and EB Garamond, film grain).
