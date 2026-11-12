@@ -1,0 +1,12 @@
+# your machines: copy devices.example.json
+devices.json
+# runtime
+history/
+push/
+heartbeat.txt
+*.log
+bench/results-*.json
+__pycache__/
+*.pyc
+.DS_Store
+node_modules/

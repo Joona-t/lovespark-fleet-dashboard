@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fleet</title>
+<style>
+/* Tokens and Korean themes are the ones from llms-explained/scripts/voice_dashboard.html (contrast-checked there). */
+:root{
+  --bg:#F7F0E1; --card:#FFFDF7; --ink:#2E2620; --dim:#6F6558; --line:#E6DCC8;
+  --pc:#2F6FB0; --mini:#7A4E9E; --ok:#2E8B57; --warn:#C2410C; --amber:#C98A16; --fix:#B42318;
+  --page-bg:var(--bg);
+  --mono: ui-monospace, Menlo, monospace; --sans: "Avenir Next", Avenir, -apple-system, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root{
+  --bg:#17130F; --card:#211B16; --ink:#F1E9DA; --dim:#A39684; --line:#3A3129;
+  --pc:#6AA6E8; --mini:#B48AD9; --ok:#5CC48A; --warn:#F08A4B; --amber:#E7B24A; --fix:#F06B5E; } }
+*{box-sizing:border-box} body{margin:0;background:var(--page-bg);background-attachment:fixed;min-height:100vh;color:var(--ink);font:15px/1.45 var(--sans)}
+main{max-width:1720px;margin:0 auto;padding:22px 16px 40px}
+header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+h1{font-size:26px;margin:0;letter-spacing:-.01em} .sub{color:var(--dim)}
+.live{display:inline-flex;align-items:center;gap:7px;color:var(--dim);font-size:13px;margin-left:auto}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ok);flex:none;animation:pulse 2s infinite}
+.dot.stale{background:var(--warn);animation:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent)}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.k{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+.v{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25}
+.v small{font-size:12px;font-weight:500;color:var(--dim)}
+.note{font-size:12px;color:var(--dim)}
+.fleet{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px}
+.fleet .card{padding:11px 14px}
+.alerts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.alert{font-size:13px;border-radius:999px;padding:4px 11px;border:1px solid var(--line);background:var(--card)}
+.alert b{font-weight:700} .alert.crit{border-color:var(--fix);box-shadow:inset 0 0 0 1px var(--fix)} .alert.warn{border-color:var(--amber)}
+.alert::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;background:var(--amber)} .alert.crit::before{background:var(--fix)}
+.devices{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:stretch}
+.quad{font:inherit;color:inherit;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:6px;width:100%}
+.quad:hover{border-color:var(--ink)} .quad:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.quad[aria-expanded="true"]{box-shadow:inset 0 0 0 2px var(--ink)}
+.quad .mhead{margin:0} .quad .tiles{margin:2px 0}
+.qgpu{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 8px;font-size:12px;align-items:baseline}
+.qgpu .bar{grid-column:1/-1;margin:2px 0 4px}
+.qgpu b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qgpu span{color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}
+.more{font-size:12px;color:var(--dim);margin-top:auto}
+.detail:empty{display:none} .detail{margin-top:14px}
+.close{margin-left:8px;font:600 12px var(--sans);color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 10px;cursor:pointer}
+@media(max-width:620px){.devices{gap:8px}.quad{padding:10px 11px}.quad .tiles{grid-template-columns:1fr 1fr;gap:6px}.quad .v{font-size:17px}.quad .spec{display:none}}
+.dev.off{opacity:.72}
+.mhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.badge{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--card);background:var(--ink);border-radius:6px;padding:3px 8px}
+.state{margin-left:auto;font-size:12px;color:var(--dim);display:inline-flex;align-items:center;gap:6px}
+.state .dot{width:8px;height:8px} .state.off .dot{background:var(--fix);animation:none}
+.spec{font-size:12px;color:var(--dim);margin-bottom:8px;overflow-wrap:anywhere}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0}
+h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin:14px 0 6px;padding-top:10px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+h3 span{text-transform:none;letter-spacing:0;color:var(--ink);font-weight:600;font-size:13px}
+.bar{height:9px;border-radius:6px;background:var(--line);overflow:hidden;margin:4px 0}
+.bar>i{display:block;height:100%;width:0;border-radius:6px;background:var(--pc);transition:width .6s}
+.bar>i.warn{background:var(--amber)} .bar>i.crit{background:var(--fix)}
+.cores{display:flex;gap:2px;height:30px;align-items:flex-end;margin:6px 0 2px}
+.cores>i{flex:1;min-width:2px;background:var(--pc);border-radius:2px 2px 0 0;min-height:2px;transition:height .6s}
+.cores>i.e{background:var(--mini)}
+.mono{font:12px/1.55 var(--mono);color:var(--ink);overflow-wrap:anywhere}
+.mono span{color:var(--dim)}
+.tag{font-size:11px;font-weight:700;border-radius:5px;padding:1px 6px;margin-left:6px;vertical-align:2px;border:1px solid currentColor}
+.tag.warn{color:var(--warn)} .tag.crit{color:var(--fix)} .tag.ok{color:var(--ok)}
+.sparks{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-top:6px}
+.sp .cap{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+svg.spark{width:100%;height:34px;display:block;border-bottom:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+td{padding:2px 0;border-bottom:1px solid var(--line)} td.r{text-align:right;white-space:nowrap;padding-left:8px} td.n{max-width:0;width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px} @media(max-width:520px){.two{grid-template-columns:1fr}.tiles{grid-template-columns:repeat(2,1fr)}}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chip{font:12px var(--mono);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.err{color:var(--fix);font-size:12px;overflow-wrap:anywhere}
+.seg{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.seg button{font:600 12px var(--sans);color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.seg button:hover{border-color:var(--ink)}
+.seg button[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:1px}
+.seg .sw{width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.25)}
+footer{margin-top:18px;font-size:12px;color:var(--dim)}
+
+:root[data-theme="kr-seoul"]{
+  --bg:#fdf9ff; --card:#fdf9ff; --ink:#3a2a3a; --dim:#6b4a66; --line:#ecd6ec;
+  --pc:#1d5a9e; --mini:#6e2a92; --ok:#1b6e3f; --warn:#a8134f; --amber:#7d5200; --fix:#a8134f;
+  --page-bg:linear-gradient(160deg,#dff1ff 0%,#ffe8f2 45%,#fff4d6 78%,#e9dcff 100%); color-scheme:light }
+:root[data-theme="kr-seoul"] .card{border-radius:10px;border-color:#c4a8e0;box-shadow:3px 3px 0 #c4a8e0}
+:root[data-theme="kr-gingham"]{
+  --bg:#fff3f7; --card:#fffafc; --ink:#2a1824; --dim:#6e3a57; --line:#f0c3d5;
+  --pc:#1d5a9e; --mini:#6e2a92; --ok:#1b6e3f; --warn:#b0124f; --amber:#7d5200; --fix:#b0124f;
+  --page-bg:#fff3f7; color-scheme:light }
+:root[data-theme="kr-gingham"] body::before{content:"";position:fixed;inset:0 0 auto 0;height:10px;z-index:30;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(246,166,196,.6) 0 5px,transparent 5px 10px),repeating-linear-gradient(90deg,rgba(246,166,196,.6) 0 5px,transparent 5px 10px),#fff3f7}
+:root[data-theme="kr-gingham"] .card{border:2px solid #2a1824;border-radius:14px;box-shadow:3px 3px 0 #2a1824}
+:root[data-theme="kr-holo"]{
+  --bg:#efe4ff; --card:rgba(255,255,255,.62); --ink:#2b1b4a; --dim:#54447a; --line:#e3d6f7;
+  --pc:#1d4f9a; --mini:#5b27c0; --ok:#18663a; --warn:#a3104a; --amber:#744c00; --fix:#a3104a;
+  --page-bg:radial-gradient(60% 45% at 12% 8%,#ffd1ea 0%,transparent 70%),radial-gradient(55% 40% at 92% 18%,#cfe6ff 0%,transparent 70%),radial-gradient(60% 50% at 80% 88%,#c8f7e1 0%,transparent 72%),radial-gradient(55% 45% at 10% 80%,#ffd8c2 0%,transparent 70%),linear-gradient(#efe4ff,#efe4ff);
+  color-scheme:light }
+:root[data-theme="kr-holo"] .card{border-color:rgba(255,255,255,.9);border-radius:22px;box-shadow:0 10px 28px rgba(140,100,230,.18),0 2px 6px rgba(255,180,220,.3);backdrop-filter:blur(6px)}
+:root[data-theme="kr-holo"] .badge{color:#fff}
+:root[data-theme="kr-neon"]{
+  --bg:#120b18; --card:rgba(42,23,64,.88); --ink:#f3eaf2; --dim:#c9b3dc; --line:#2e1a40;
+  --pc:#7fb6f0; --mini:#ff8ae6; --ok:#6fd39a; --warn:#ff8a9e; --amber:#f0c060; --fix:#ff8a9e;
+  --page-bg:radial-gradient(80% 50% at 50% -10%,rgba(255,70,214,.22) 0%,transparent 70%),radial-gradient(70% 45% at 100% 110%,rgba(110,17,145,.45) 0%,transparent 70%),#120b18;
+  color-scheme:dark }
+:root[data-theme="kr-neon"] .card{border-color:rgba(255,70,214,.45);border-radius:16px}
+:root[data-theme="kr-neon"] .badge{color:#120b18}
+:root[data-theme="kr-neon"] .dot{box-shadow:0 0 10px #ff46d6}
+@media (prefers-reduced-motion: reduce){ .dot{animation:none} .bar>i,.cores>i{transition:none} }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Fleet</h1><span class="sub" id="sub">all machines, live</span>
+    <div class="seg" role="group" aria-label="Chart window" id="windows">
+      <button type="button" data-win="live">15 min</button>
+      <button type="button" data-win="long">24 h</button>
+    </div>
+    <div class="seg" role="group" aria-label="Theme" id="themes">
+      <button type="button" data-theme=""><span class="sw" style="background:linear-gradient(135deg,#F7F0E1 50%,#C98A16 50%)"></span>Paper</button>
+      <button type="button" data-theme="kr-seoul"><span class="sw" style="background:linear-gradient(135deg,#fdf9ff 50%,#ff5baa 50%)"></span>서울 Seoul Y2K</button>
+      <button type="button" data-theme="kr-gingham"><span class="sw" style="background:linear-gradient(135deg,#fffafc 50%,#f6a6c4 50%)"></span>깅엄 Gingham</button>
+      <button type="button" data-theme="kr-holo"><span class="sw" style="background:linear-gradient(135deg,#faf7ff 50%,#9b6cf0 50%)"></span>모찌 Holo Mochi</button>
+      <button type="button" data-theme="kr-neon"><span class="sw" style="background:linear-gradient(135deg,#120b18 50%,#ff46d6 50%)"></span>네온 Neon Usagi</button>
+    </div>
+    <span class="live"><span class="dot stale" id="dot"></span><span id="age">connecting…</span></span>
+  </header>
+  <div class="fleet" id="fleet"></div>
+  <div class="alerts" id="alerts"></div>
+  <div class="devices" id="devices" aria-label="Machines: choose one for its full stats"></div>
+  <div class="detail" id="detail"></div>
+  <footer>Every number is measured on the machine itself. Process CPU: 100% = one core. PC power is the GPUs only (no wall meter); Mac power is the whole machine (SMC). Charts: load and power are averages, memory, VRAM and temperature are peaks in the 24 h view. JSON for scripts: <code>/api/state</code>.</footer>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const has = v => v !== null && v !== undefined;
+const num = (v, d = 0) => has(v) ? Number(v).toFixed(d) : "–";
+const GB = (b, d = 1) => has(b) ? (b / 2 ** 30).toFixed(d) : "–";
+const rate = b => !has(b) ? "–" : b >= 1e6 ? (b / 1e6).toFixed(1) + " MB/s" : b >= 1e3 ? (b / 1e3).toFixed(0) + " kB/s" : Math.round(b) + " B/s";
+const dur = s => !has(s) ? "–" : s >= 86400 ? `${Math.floor(s / 86400)}d ${Math.floor(s % 86400 / 3600)}h` : s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.floor(s % 3600 / 60)}m` : `${Math.floor(s / 60)}m`;
+const clock = t => new Date(t * 1000).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
+const pct = (a, b) => has(a) && b ? a / b * 100 : null;
+const LIVE_MAX = 300, LONG_MAX = 1440;
+const S = {t: 0, interval: 3, devices: [], alerts: [], live: {}, long: {}, win: "live", open: null};
+
+/* Every value from a machine is untrusted: text goes through esc(), numbers through num()/GB()/rate()/dur().
+   The server's clean() also strips text from every field that is not a named text field.
+   Temperature bands. NVIDIA: 80 warn, 88 critical. Apple silicon: 95 warn, 103 critical (same as the server's alerts). */
+const band = (t, mac) => !has(t) ? "" : t >= (mac ? 103 : 88) ? "crit" : t >= (mac ? 95 : 80) ? "warn" : "";
+const cpuBand = (t, mac) => !has(t) ? "" : t >= (mac ? 103 : 95) ? "crit" : t >= (mac ? 95 : 88) ? "warn" : "";
+const AGENT = {mac: "macOS agent", win: "Windows agent", linux: "Linux agent", auto: "OS not detected yet"};
+const tag = (cls, text) => cls ? `<span class="tag ${cls}">${text}</span>` : "";
+const tile = (k, v, sub = "") => `<div><div class="k">${k}</div><div class="v">${v}</div>${sub ? `<div class="note">${sub}</div>` : ""}</div>`;
+const bar = (p, cls = "") => `<div class="bar"><i class="${cls}" style="width:${Math.max(0, Math.min(100, p || 0))}%"></i></div>`;
+
+/* One chart: a fixed time window (so gaps show as gaps) and a fixed scale (so machines compare). */
+function spark(points, get, color, lo, hi, unit, label){
+  const now = S.t, span = S.win === "live" ? 900 : 86400, W = 300, H = 34;
+  const pts = points.map(p => [p.t, get(p)]).filter(p => has(p[1]) && p[0] >= now - span);
+  let cap = `<span>${label}</span><span>no data</span>`, path = "";
+  if (pts.length){
+    const vals = pts.map(p => p[1]), mn = Math.min(...vals), mx = Math.max(...vals), av = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const top = Math.max(hi, mx);
+    const xy = p => `${((p[0] - (now - span)) / span * W).toFixed(1)},${(H - 1 - (Math.max(lo, p[1]) - lo) / (top - lo || 1) * (H - 3)).toFixed(1)}`;
+    const gap = S.win === "live" ? S.interval * 4 : 180;      // break the line where samples are missing
+    let d = "", area = "", start = null, prev = null;
+    for (const p of pts){
+      if (!prev || p[0] - prev[0] > gap){ if (prev) area += `L${xy([prev[0], lo])}Z`; d += `M${xy(p)}`; area += `M${xy([p[0], lo])}L${xy(p)}`; }
+      else { d += `L${xy(p)}`; area += `L${xy(p)}`; }
+      prev = p;
+    }
+    area += `L${xy([prev[0], lo])}Z`;
+    path = `<path d="${area}" fill="${color}" opacity=".13"/><path d="${d}" fill="none" stroke="${color}" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>`;
+    cap = `<span>${label}</span><span>${num(mn)}–${num(mx)}${unit} · avg ${num(av)}</span>`;
+  }
+  return `<div class="sp"><div class="cap">${cap}</div><svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${label}">${path}</svg></div>`;
+}
+
+function procTable(title, rows, cols){
+  if (!rows || !rows.length) return `<div><div class="k">${title}</div><div class="note">none</div></div>`;
+  return `<div><div class="k">${title}</div><table>${rows.map(r => `<tr><td class="n" title="${esc(r.name)} · pid ${esc(r.pid)}">${esc(r.name)}</td>${cols.map(c => `<td class="r">${c(r)}</td>`).join("")}</tr>`).join("")}</table></div>`;
+}
+
+function gpuBlock(d, x, g, i, hist){
+  const mac = x.kind === "mac", vp = pct(g.mem_used, g.mem_total), tb = band(g.temp, mac);
+  const limit = g.power_limit ? ` <small>/ ${num(g.power_limit)} W</small>` : "";
+  const detail = mac
+    ? `<span>renderer</span> ${num(g.renderer)}% <span>· tiler</span> ${num(g.tiler)}% <span>· GPU memory allocated</span> ${GB(g.mem_alloc)} GB <span>· unified with system RAM</span>`
+    : `<span>fan</span> ${num(g.fan)}% <span>· core</span> ${num(g.clock)} MHz <span>· mem</span> ${num(g.mem_clock)} MHz <span>· mem bus</span> ${num(g.mem_util)}% <span>· ${esc(g.pstate || "")} · PCIe</span> gen ${num(g.pcie_gen)} ×${num(g.pcie_width)} <span>(card max gen ${num(g.pcie_gen_max)} ×${num(g.pcie_width_max)}) · driver</span> ${esc(g.driver || "–")}`
+      + `<br><span>clock limits:</span> ${g.throttle && g.throttle.length ? esc(g.throttle.join(", ")) : "none"}${has(g.mem_temp) ? ` <span>· VRAM temp</span> ${num(g.mem_temp)}°` : ` <span>· VRAM temp not exposed by the driver</span>`}`;
+  const top = mac ? 100 : (g.power_limit || 100);
+  return `<h3>GPU ${esc(g.index ?? i)} <span>${esc(g.name || "")}</span>${g.throttle_bad ? tag("crit", "throttling") : ""}</h3>
+    <div class="tiles">
+      ${tile("Load", num(g.util) + "<small>%</small>")}
+      ${tile(mac ? "GPU memory" : "VRAM", `${GB(g.mem_used)}<small> / ${GB(g.mem_total, 0)} GB</small>`)}
+      ${tile("Temp", (has(g.temp) ? num(g.temp) + "<small>°C</small>" : "–") + tag(tb, tb === "crit" ? "hot" : "warm"))}
+      ${tile("Power", (has(g.power) ? num(g.power, g.power < 10 ? 1 : 0) + "<small> W</small>" : "–") + limit)}
+    </div>
+    ${bar(vp, vp >= 95 && !mac ? "crit" : vp >= 85 && !mac ? "warn" : "")}
+    <div class="mono">${detail}</div>
+    <div class="sparks">
+      ${spark(hist, p => p.g[i] && p.g[i][0], "var(--pc)", 0, 100, "%", "load")}
+      ${spark(hist, p => p.g[i] && p.g[i][1], "var(--mini)", 0, 100, "%", mac ? "GPU memory" : "VRAM")}
+      ${spark(hist, p => p.g[i] && p.g[i][2], "var(--warn)", 20, 95, "°", "temp")}
+      ${spark(hist, p => p.g[i] && p.g[i][3], "var(--amber)", 0, mac ? 20 : top, " W", "power")}
+    </div>`;
+}
+
+function card(d){
+  const x = d.sample, hist = (S.win === "live" ? S.live : S.long)[d.id] || [];
+  const age = d.seen ? Math.max(0, S.t - d.seen) : null;
+  const state = d.online ? `<span class="state"><span class="dot"></span>live · ${has(x && x.agent_ms) ? num(x.agent_ms) + " ms read" : ""}</span>`
+    : `<span class="state off"><span class="dot"></span>offline${d.seen ? " · last seen " + clock(d.seen) : " · not seen yet"}</span>`;
+  if (!x) return `<section class="card dev off"><div class="mhead"><span class="badge">${esc(d.label)}</span>${state}</div>
+      <div class="spec">${AGENT[d.kind] || "agent"} · connection attempts: ${esc(d.connects)}</div>
+      <div class="err">${esc(d.error || "waiting for the first sample…")}</div></section>`;
+  const mac = x.kind === "mac", c = x.cpu, m = x.mem, pw = x.power || {};
+  const mp = pct(m.used, m.total), ctb = cpuBand(c.temp, mac);
+  const spec = [c.model, c.ncores ? `${c.ncores} cores / ${c.nthreads} threads` : (c.cores.length ? c.cores.length + " cores" : ""), GB(m.total, 0) + " GB RAM", x.model, x.os, "up " + dur(x.uptime)].filter(Boolean).map(esc).join(" · ");
+  const power = mac ? pw.system_w : pw.gpu_w;
+  const cores = c.cores.map((u, i) => `<i class="${c.kinds[i] === "E" ? "e" : ""}" style="height:${Math.max(4, u)}%" title="core ${i}${c.kinds[i] ? " (" + esc(c.kinds[i]) + ")" : ""}: ${num(u)}%"></i>`).join("");
+  const cpuLine = [has(c.load) && c.load ? `<span>load</span> ${c.load.map(v => num(v, 2)).join(" ")}` : "", has(c.freq_mhz) ? `<span>clock</span> ${num(c.freq_mhz)} MHz` : "",
+    c.kinds.length ? `<span>cores: ${c.kinds.filter(k => k === "E").length} efficiency (purple) + ${c.kinds.filter(k => k === "P").length} performance</span>` : "",
+    !has(c.temp) && x.kind === "win" ? `<span>CPU temp: Windows exposes none without a sensor driver</span>` : ""].filter(Boolean).join(" <span>·</span> ");
+  const memLine = [`<span>used</span> ${GB(m.used)} / ${GB(m.total, 0)} GB`, has(m.compressed) ? `<span>compressed</span> ${GB(m.compressed)} GB` : "", has(m.wired) ? `<span>wired</span> ${GB(m.wired)} GB` : "",
+    has(m.committed) ? `<span>committed</span> ${GB(m.committed)} / ${GB(m.commit_limit, 0)} GB` : "", `<span>swap</span> ${GB(m.swap_used)} / ${GB(m.swap_total, 0)} GB`].filter(Boolean).join(" <span>·</span> ");
+  const b = pw.battery;
+  const rails = [["CPU", pw.cpu_w], ["GPU", pw.gpu_w], ["Neural engine", pw.ane_w], ["RAM", pw.dram_w]].filter(r => has(r[1])).map(r => `<span>${r[0]}</span> ${num(r[1], 2)} W`).join(" <span>·</span> ");
+  const sensorChips = `<div class="chips" style="margin-top:6px">${x.temps.map(t => `<span class="chip" title="${num(t.n)} sensor${t.n > 1 ? "s" : ""}, mean ${num(t.avg, 1)}°">${esc(t.name)} ${num(t.c)}°</span>`).join("")}</div>`;
+  const fanLine = x.fans.map(f => `<span>${esc(f.name)}</span> ${num(f.rpm)} rpm${f.max ? ` <span>(${num(pct(f.rpm, f.max))}% of ${num(f.max)})</span>` : ""}`).join(" <span>·</span> ");
+  const pcCooling = !mac && (x.temps.length || x.fans.length || has(pw.cpu_w)) ? `<h3>Power and cooling</h3>
+      <div class="mono">${has(pw.cpu_w) ? `<span>CPU package</span> ${num(pw.cpu_w, 1)} W <span>·</span> ` : ""}<span>GPUs</span> ${num(pw.gpu_w, 1)} W${fanLine ? `<br>${fanLine}` : ""}</div>${sensorChips}` : "";
+  const cooling = mac ? `<h3>Power and cooling</h3>
+      <div class="mono">${has(pw.system_w) ? `<span>whole machine</span> ${num(pw.system_w, 1)} W` : `<span>system power not exposed</span>`}${rails ? " <span>·</span> " + rails : ""}
+      ${b ? `<br><span>battery</span> ${num(b.pct)}% ${b.charging ? "charging" : b.plugged ? "on mains" : "on battery"} <span>· adapter in</span> ${num(b.power_in_w, 1)} W <span>· cycles</span> ${num(b.cycles)}` : ""}
+      ${fanLine ? `<br>${fanLine}` : `<br><span>no fan reported</span>`}</div>${sensorChips}` : pcCooling;
+  const gprocs = x.gpu_procs.length ? procTable("Processes on the NVIDIA GPUs (dedicated VRAM)", x.gpu_procs, [r => "GPU " + esc(r.gpu ?? "?"), r => r.mem ? (r.mem / 2 ** 20).toFixed(0) + " MB" : "–"]) : "";
+  const models = x.models === null || x.models === undefined ? "" : `<div style="margin-top:8px"><div class="k">Models loaded</div>${x.models.length ? `<div class="chips">${x.models.map(mm => `<span class="chip">${esc(mm.server || "Ollama")}: ${esc(mm.name)}${has(mm.vram) ? ` · ${GB(mm.vram)} GB VRAM` : ""}</span>`).join("")}</div>` : `<div class="note">a model server is running, nothing loaded</div>`}</div>`;
+  return `<section class="card dev ${d.online ? "" : "off"}">
+    <div class="mhead"><span class="badge">${esc(d.label)}</span><span class="note">${esc(x.host || "")}</span>${state}</div>
+    <div class="spec">${spec}</div>
+    ${d.online ? "" : `<div class="err">Showing the last sample (${dur(age)} old). ${esc(d.error || "")}</div>`}
+    <div class="tiles">
+      ${tile("CPU", num(c.util) + "<small>%</small>")}
+      ${tile("CPU temp", (has(c.temp) ? num(c.temp) + "<small>°C</small>" : "–") + tag(ctb, ctb === "crit" ? "hot" : "warm"))}
+      ${tile("Memory", num(mp) + "<small>%</small>" + (m.pressure && m.pressure !== "normal" ? tag(m.pressure === "critical" ? "crit" : "warn", "pressure") : ""))}
+      ${tile(mac ? "Power" : "GPU power", has(power) ? num(power, power < 10 ? 1 : 0) + "<small> W</small>" : "–")}
+    </div>
+    <h3>CPU</h3>
+    <div class="cores">${cores}</div>
+    <div class="mono">${cpuLine}</div>
+    <div class="sparks">
+      ${spark(hist, p => p.cpu, "var(--pc)", 0, 100, "%", "CPU load")}
+      ${has(c.temp) ? spark(hist, p => p.ct, "var(--warn)", 20, 105, "°", "CPU temp") : spark(hist, p => p.mem, "var(--mini)", 0, 100, "%", "memory")}
+    </div>
+    <h3>Memory</h3>
+    ${bar(mp, mp >= 92 ? "crit" : mp >= 80 ? "warn" : "")}
+    <div class="mono">${memLine}</div>
+    ${x.gpus.map((g, i) => gpuBlock(d, x, g, i, hist)).join("")}
+    ${cooling}
+    <h3>Storage and network</h3>
+    ${x.disks.map(k => { const f = pct(k.free, k.total); return `<div class="mono"><span>${esc(k.name)}</span> ${GB(k.free, 0)} GB free <span>of ${GB(k.total, 0)} GB</span>${f < 5 ? tag("crit", "full") : f < 10 ? tag("warn", "low") : ""}</div>${bar(100 - f, f < 5 ? "crit" : f < 10 ? "warn" : "")}`; }).join("")}
+    <div class="mono"><span>disk read</span> ${rate(x.disk_io.r)} <span>· write</span> ${rate(x.disk_io.w)} <span>· net down</span> ${rate(x.net.rx)} <span>· up</span> ${rate(x.net.tx)}</div>
+    <h3>Processes</h3>
+    <div class="two">
+      ${procTable("Top CPU", x.procs_cpu, [r => num(r.cpu) + "%"])}
+      ${procTable("Top memory", x.procs_mem, [r => GB(r.mem, 2) + " GB"])}
+    </div>
+    ${gprocs ? `<div style="margin-top:8px">${gprocs}</div>` : ""}
+    ${models}
+  </section>`;
+}
+
+/* The overview: one corner per machine, the numbers that matter at a glance. Choosing it opens its full card. */
+function quad(d){
+  const x = d.sample, open = S.open === d.id;
+  const state = d.online ? `<span class="state"><span class="dot"></span>live</span>`
+    : `<span class="state off"><span class="dot"></span>offline</span>`;
+  const head = `<div class="mhead"><span class="badge">${esc(d.label)}</span>${state}</div>`;
+  let body;
+  if (!x) body = `<div class="err">${esc(d.error || "waiting for the first sample…")}</div>`;
+  else {
+    const mac = x.kind === "mac", c = x.cpu, m = x.mem, pw = x.power || {}, mp = pct(m.used, m.total), ctb = cpuBand(c.temp, mac);
+    const power = mac ? pw.system_w : pw.gpu_w;
+    const gpus = x.gpus.filter(g => !mac).map(g => { const vp = pct(g.mem_used, g.mem_total), tb = band(g.temp, false); return `<div class="qgpu">
+        <b>${esc((g.name || "GPU " + g.index).replace(/^NVIDIA (GeForce )?/, ""))}</b><span>${num(g.util)}% · ${has(g.temp) ? num(g.temp) + "°" : "–"}${tag(tb, tb === "crit" ? "hot" : "warm")}</span>
+        <span>VRAM ${GB(g.mem_used)} / ${GB(g.mem_total, 0)} GB</span><span>${has(g.power) ? num(g.power) + " W" : ""}</span>
+        ${bar(vp, vp >= 95 ? "crit" : vp >= 85 ? "warn" : "")}</div>`; }).join("");
+    body = `<div class="spec">${[c.model, x.model].filter(Boolean).map(esc).join(" · ")}</div>
+      ${d.online ? "" : `<div class="err">last seen ${d.seen ? clock(d.seen) : "never"}. ${esc(d.error || "")}</div>`}
+      <div class="tiles">
+        ${tile("CPU", num(c.util) + "<small>%</small>")}
+        ${tile("CPU temp", (has(c.temp) ? num(c.temp) + "<small>°C</small>" : "–") + tag(ctb, ctb === "crit" ? "hot" : "warm"))}
+        ${tile("Memory", num(mp) + "<small>%</small>")}
+        ${tile(mac ? "Power" : "GPU power", has(power) ? num(power, power < 10 ? 1 : 0) + "<small> W</small>" : "–")}
+      </div>${gpus}`;
+  }
+  return `<button type="button" class="card dev quad ${d.online ? "" : "off"}" data-id="${esc(d.id)}" aria-expanded="${open}">
+    ${head}${body}<span class="more">${open ? "hide full stats ▲" : "full stats ▼"}</span></button>`;
+}
+
+function openDev(id){
+  S.open = S.open === id ? null : id;
+  try { localStorage.setItem("fleet-dash-open", S.open || ""); } catch (e) {}
+  render();
+  if (S.open) $("detail").scrollIntoView({behavior: "smooth", block: "start"});
+}
+
+function fleetStrip(){
+  const on = S.devices.filter(d => d.online), all = S.devices.length;
+  let free = 0, total = 0, best = null, gw = 0, mw = 0, hot = null;
+  for (const d of on) try {      // a machine whose sample cannot be read is left out of the totals; its card says why
+    const x = d.sample; if (!x) continue;
+    if (x.kind === "mac" && has(x.power.system_w)) mw += x.power.system_w;
+    const consider = (name, t) => { if (has(t) && (!hot || t > hot.t)) hot = {t, name: `${name} · ${d.label}`}; };
+    consider("CPU", x.cpu.temp);
+    for (const g of x.gpus){
+      consider("GPU " + g.index, g.temp);
+      if (g.unified) continue;
+      const f = g.mem_total - g.mem_used; free += f; total += g.mem_total;
+      if (has(g.power)) gw += g.power;
+      if (!best || f > best.f) best = {f, name: `${d.label} GPU ${g.index}`};
+    }
+  } catch (e) {}
+  let wh = 0, since = S.t - 86400;
+  for (const id in S.long) for (const p of S.long[id]) if (p.t >= since && has(p.w)) wh += p.w * p.n * S.interval / 3600;
+  const crit = S.alerts.filter(a => a.level === "crit").length;
+  $("fleet").innerHTML = [
+    ["Machines online", `${on.length}<small> / ${all}</small>`, S.devices.filter(d => !d.online).map(d => d.label).join(", ") || "all reporting"],
+    ["NVIDIA VRAM free", total ? `${GB(free)}<small> / ${GB(total, 0)} GB</small>` : "–", best ? `largest free block: ${GB(best.f)} GB on ${best.name}` : "no NVIDIA GPU online"],
+    ["Power now (measured)", `${num(gw + mw)}<small> W</small>`, `NVIDIA GPUs ${num(gw)} W · Macs ${num(mw)} W`],
+    ["Hottest sensor", hot ? `${num(hot.t)}<small>°C</small>` : "–", hot ? hot.name : ""],
+    ["Energy, last 24 h", wh >= 1000 ? `${(wh / 1000).toFixed(2)}<small> kWh</small>` : `${num(wh)}<small> Wh</small>`, "only while this dashboard was recording"],
+    ["Alerts", `${S.alerts.length}`, S.alerts.length ? `${crit} critical` : "nothing to act on"],
+  ].map(([k, v, sub]) => `<div class="card">${tile(k, v, esc(sub))}</div>`).join("");
+  $("alerts").innerHTML = S.alerts.map(a => `<span class="alert ${a.level === "crit" ? "crit" : "warn"}"><b>${esc(a.dev)}</b> ${esc(a.msg)}</span>`).join("");
+}
+
+function render(){
+  fleetStrip();
+  const focused = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.id : null;
+  const broken = (d, e) => `<section class="card dev off"><div class="mhead"><span class="badge">${esc(d.label)}</span></div><div class="err">This machine's sample could not be drawn (${esc(e.name)}).</div></section>`;
+  $("devices").innerHTML = S.devices.map(d => {
+    try { return quad(d); }        // one machine's unreadable sample must not blank the others
+    catch (e) { return broken(d, e); }
+  }).join("");
+  if (focused) { const b = $("devices").querySelector(`[data-id="${CSS.escape(focused)}"]`); if (b) b.focus({preventScroll: true}); }
+  const d = S.devices.find(v => v.id === S.open);
+  let html = "";
+  if (d) { try { html = card(d); } catch (e) { html = broken(d, e); } }
+  $("detail").innerHTML = html.replace('<div class="mhead">', `<div class="mhead"><button type="button" class="close" data-close>close ✕</button>`);
+}
+
+function onMessage(msg){
+  S.t = msg.t; S.interval = msg.interval; S.devices = msg.devices; S.alerts = msg.alerts;
+  for (const [key, cap] of [["live", LIVE_MAX], ["long", LONG_MAX]])
+    for (const id in msg[key]) S[key][id] = (msg.init ? [] : (S[key][id] || [])).concat(msg[key][id]).slice(-cap);
+  render();
+}
+
+function pick(groupId, attr, value, store){
+  document.querySelectorAll(`#${groupId} button`).forEach(b => b.setAttribute("aria-pressed", String(b.dataset[attr] === value)));
+  try { localStorage.setItem(store, value); } catch (e) {}
+}
+$("devices").addEventListener("click", e => { const b = e.target.closest("[data-id]"); if (b) openDev(b.dataset.id); });
+$("detail").addEventListener("click", e => { if (e.target.closest("[data-close]")) { const id = S.open; openDev(S.open); const b = $("devices").querySelector(`[data-id="${CSS.escape(id)}"]`); if (b) b.focus(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && S.open) openDev(S.open); });
+function setTheme(t){ if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; pick("themes", "theme", t || "", "fleet-dash-theme"); }
+function setWin(w){ S.win = w; pick("windows", "win", w, "fleet-dash-window"); if (S.devices.length) render(); }
+document.querySelectorAll("#themes button").forEach(b => b.addEventListener("click", () => setTheme(b.dataset.theme)));
+document.querySelectorAll("#windows button").forEach(b => b.addEventListener("click", () => setWin(b.dataset.win)));
+let savedTheme = "", savedWin = "live";
+try { savedTheme = localStorage.getItem("fleet-dash-theme") || ""; savedWin = localStorage.getItem("fleet-dash-window") || "live"; S.open = localStorage.getItem("fleet-dash-open") || null; } catch (e) {}
+setTheme(savedTheme); setWin(savedWin === "long" ? "long" : "live");
+
+let lastMsg = 0;
+const es = new EventSource("/events");
+es.onmessage = e => { lastMsg = Date.now() / 1000; onMessage(JSON.parse(e.data)); };
+setInterval(() => {
+  const a = lastMsg ? Math.round(Date.now() / 1000 - lastMsg) : null;
+  $("age").textContent = a == null ? "connecting…" : a > 30 ? `server silent for ${a}s` : `live · updated ${a}s ago`;
+  $("dot").classList.toggle("stale", a == null || a > 30);
+}, 1000);
+</script>
+</body>
+</html>

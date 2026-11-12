@@ -1,0 +1,30 @@
+[
+  {
+    "id": "mini",
+    "label": "Mac mini",
+    "kind": "mac",
+    "ssh": "my-mini"
+  },
+  {
+    "id": "laptop",
+    "label": "MacBook",
+    "kind": "mac",
+    "ssh": null,
+    "push_from": "laptop"
+  },
+  {
+    "id": "pc",
+    "label": "Gaming PC",
+    "kind": "win",
+    "ssh": "my-pc"
+  },
+  {
+    "id": "gpu-box",
+    "label": "GPU box",
+    "kind": "auto",
+    "ssh": [
+      "gpu-box-linux",
+      "gpu-box-windows"
+    ]
+  }
+]
