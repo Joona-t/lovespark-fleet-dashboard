@@ -90,6 +90,16 @@ table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:ta
 td{padding:2px 0;border-bottom:1px solid var(--line)} td.r{text-align:right;white-space:nowrap;padding-left:8px} td.n{max-width:0;width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:14px} @media(max-width:520px){.two{grid-template-columns:1fr}.tiles{grid-template-columns:repeat(2,1fr)}}
 .chips{display:flex;gap:5px;flex-wrap:wrap}
+/* Training runs tab (runs_linux.py on a GPU box, /api/runs) */
+[hidden]{display:none!important}
+.tabs{width:100%;margin-top:2px}
+.runs{display:grid;gap:12px}
+.runs .tiles{grid-template-columns:repeat(6,1fr)} @media(max-width:900px){.runs .tiles{grid-template-columns:repeat(3,1fr)}} @media(max-width:520px){.runs .tiles{grid-template-columns:repeat(2,1fr)}}
+.runs table td{padding:3px 6px;vertical-align:top} .runs td.cmd{font:12px/1.45 var(--mono);overflow-wrap:anywhere}
+.runlog{border-top:1px solid var(--line);padding:8px 0 6px} .runlog:first-of-type{border-top:0}
+.runlog .path{font:12px var(--mono);overflow-wrap:anywhere} .runlog .path b{font-weight:700}
+.runlog pre{margin:4px 0 0;font:12px/1.45 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;color:var(--dim)}
+.act{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px;animation:pulse 2s infinite;vertical-align:1px}
 .chip{font:12px var(--mono);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
 .err{color:var(--fix);font-size:12px;overflow-wrap:anywhere}
 .seg{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
@@ -177,12 +187,16 @@ footer{margin-top:18px;font-size:12px;color:var(--dim)}
       <button type="button" data-theme="glyph-basalt"><span class="sw" style="background:linear-gradient(135deg,#16171a 50%,#e6c277 50%)"></span>Glyph Basalt</button>
     </div>
     <span class="live"><span class="dot stale" id="dot"></span><span id="age">connecting…</span></span>
+    <div class="seg tabs" role="group" aria-label="View" id="tabs" hidden><button type="button" data-tab="machines">Machines</button></div>
   </header>
+  <div id="view-machines">
   <div class="fleet" id="fleet"></div>
   <div class="alerts" id="alerts"></div>
   <div class="devices" id="devices" aria-label="Machines: choose one for its full stats"></div>
   <div class="detail" id="detail"></div>
-  <footer>Every number is measured on the machine itself. Process CPU: 100% = one core. PC power is the GPUs only (no wall meter); Mac power is the whole machine (SMC). Charts: load and power are averages, memory, VRAM and temperature are peaks in the 24 h view. JSON for scripts: <code>/api/state</code>.</footer>
+  </div>
+  <div class="runs" id="view-runs" hidden></div>
+  <footer>Every number is measured on the machine itself. Process CPU: 100% = one core. PC power is the GPUs only (no wall meter); Mac power is the whole machine (SMC). Charts: load and power are averages, memory, VRAM and temperature are peaks in the 24 h view. JSON for scripts: <code>/api/state</code>, and <code>/api/runs</code> for the training runs tab (read every 5 s by <code>runs_linux.py</code> over SSH: vLLM's own counters, the GPU lock, matching processes, and log files written in the last day).</footer>
 </main>
 <script>
 const $ = id => document.getElementById(id);
@@ -490,6 +504,80 @@ document.querySelectorAll("#windows button").forEach(b => b.addEventListener("cl
 let savedTheme = "", savedWin = "live";
 try { savedTheme = localStorage.getItem("fleet-dash-theme") || ""; savedWin = localStorage.getItem("fleet-dash-window") || "live"; S.open = localStorage.getItem("fleet-dash-open") || null; } catch (e) {}
 setTheme(savedTheme); setWin(savedWin === "long" ? "long" : "live");
+
+/* ---------- Training runs tab: one per device with a "runs" entry in devices.json ---------- */
+const R = {tab: "machines", data: null, timer: null};
+const size = b => !has(b) ? "–" : b >= 1e9 ? (b / 1e9).toFixed(2) + " GB" : b >= 1e6 ? (b / 1e6).toFixed(1) + " MB" : (b / 1e3).toFixed(1) + " kB";
+function rateSpark(rate, idx, color, label, unit){
+  const now = Date.now() / 1000, span = 1800, W = 300, H = 34;
+  const pts = rate.filter(p => has(p[idx]) && p[0] >= now - span).map(p => [p[0], p[idx]]);
+  if (!pts.length) return `<div class="sp"><div class="cap"><span>${label}</span><span>no data</span></div><svg class="spark" viewBox="0 0 ${W} ${H}"></svg></div>`;
+  const vals = pts.map(p => p[1]), mx = Math.max(...vals, 1), av = vals.reduce((a, b) => a + b, 0) / vals.length;
+  const xy = p => `${((p[0] - (now - span)) / span * W).toFixed(1)},${(H - 1 - p[1] / mx * (H - 3)).toFixed(1)}`;
+  let d = "", prev = null;
+  for (const p of pts){ d += (!prev || p[0] - prev[0] > 30 ? "M" : "L") + xy(p); prev = p; }
+  return `<div class="sp"><div class="cap"><span>${label}</span><span>now ${num(vals[vals.length - 1])}${unit} · max ${num(mx)} · avg ${num(av)}</span></div><svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${label}, last 30 minutes"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg></div>`;
+}
+function runsCard(r){
+  const x = r.sample || {}, v = x.vllm || {}, lock = x.lock, ago = r.seen ? Math.round(Date.now() / 1000 - r.seen) : null;
+  const state = r.online ? `<span class="state"><span class="dot"></span>probe live · ${ago}s ago</span>`
+                         : `<span class="state off"><span class="dot"></span>${esc(r.error || "no reading yet")}</span>`;
+  const m = S.devices.find(d => d.id === r.id), gpus = (m && m.sample && m.sample.gpus) || [];
+  const gpuTiles = gpus.map((g, i) => tile(`GPU ${i}`, `${num(g.util)}%`, `${num(g.temp)} °C · ${num(g.power)} W${g.power_limit ? " / " + num(g.power_limit) : ""}`)).join("");
+  const lockTxt = !lock ? "not set" : lock.held ? `held ${dur(lock.age)}` : "free";
+  const tiles = [
+    tile("vLLM", v.up ? "up" : has(v.up) ? "down" : "–", v.up ? esc(v.model || "") : ""),
+    tile("Requests", v.up ? `${num(v.running)} <small>running</small>` : "–", v.up ? `${num(v.waiting)} waiting` : ""),
+    tile("Writing", v.up ? `${num(v.gen_tps)} <small>tok/s</small>` : "–", "generation, all requests"),
+    tile("Reading", v.up ? `${num(v.prompt_tps)} <small>tok/s</small>` : "–", "prompt tokens"),
+    tile("KV cache", v.up ? `${num(v.kv, 1)}%` : "–", "of the shared context"),
+    tile("GPU lock", lockTxt, lock && lock.held ? esc(lock.cmd || "") : ""),
+  ].join("");
+  const jobs = x.jobs || [];
+  const jobRows = jobs.length ? `<table>${jobs.map(j => `<tr><td class="r">${dur(j.age)}</td><td class="cmd">${esc(j.cmd)}<div class="note">${esc(j.cwd || "")} · pid ${esc(j.pid)}</div></td></tr>`).join("")}</table>` : `<div class="note">No matching job is running.</div>`;
+  const runs = x.runs || [];
+  const runRows = runs.length ? runs.map(f => {
+    const parts = String(f.path || "").split("/"), file = parts.pop(), live = has(f.age) && f.age < 120;
+    return `<div class="runlog"><div class="path">${live ? '<span class="act" title="written in the last 2 minutes"></span>' : ""}${esc(parts.join("/"))}/<b>${esc(file)}</b> <span class="note">· ${live ? "writing now" : "last written " + dur(f.age) + " ago"} · ${size(f.size)}</span></div>${(f.tail || []).length ? `<pre>${(f.tail || []).map(esc).join("\n")}</pre>` : ""}</div>`;
+  }).join("") : `<div class="note">No log written in the last day.</div>`;
+  return `<section class="card"><div class="mhead"><span class="badge">${esc(r.label)}</span><span class="k">training runs</span>${state}</div>
+    <div class="tiles">${tiles}</div>${gpuTiles ? `<div class="tiles">${gpuTiles}</div>` : ""}
+    <div class="two">${rateSpark(r.rate || [], 1, "var(--ok)", "Writing, tokens/s", "")}${rateSpark(r.rate || [], 3, "var(--warn)", "Requests running", "")}</div></section>
+    <section class="card"><div class="k">Jobs running now</div>${jobRows}</section>
+    <section class="card"><div class="k">Run logs, newest first</div>${runRows}</section>`;
+}
+function renderRuns(){
+  if (!R.data) return;
+  const r = R.data.devices.find(d => "runs:" + d.id === R.tab);
+  if (r) { try { $("view-runs").innerHTML = runsCard(r); } catch (e) { $("view-runs").innerHTML = `<section class="card"><div class="err">The runs reading could not be drawn (${esc(e.name)}).</div></section>`; } }
+}
+async function pollRuns(){
+  try {
+    const res = await fetch("/api/runs", {cache: "no-store"});
+    R.data = await res.json();
+  } catch (e) { return; }
+  const tabs = $("tabs");
+  for (const d of R.data.devices) if (!tabs.querySelector(`[data-tab="runs:${CSS.escape(d.id)}"]`)) {
+    const b = document.createElement("button");
+    b.type = "button"; b.dataset.tab = "runs:" + d.id; b.textContent = `${d.label} training runs`;
+    b.addEventListener("click", () => setTab(b.dataset.tab)); tabs.appendChild(b);
+  }
+  tabs.hidden = !R.data.devices.length;
+  if (R.tab !== "machines" && !R.data.devices.some(d => "runs:" + d.id === R.tab)) setTab("machines");
+  pick("tabs", "tab", R.tab, "fleet-dash-tab");
+  renderRuns();
+}
+function setTab(t){
+  R.tab = t;
+  $("view-machines").hidden = t !== "machines"; $("view-runs").hidden = t === "machines";
+  pick("tabs", "tab", t, "fleet-dash-tab");
+  clearInterval(R.timer);
+  R.timer = setInterval(pollRuns, t === "machines" ? 60000 : 5000);   // the tab list is checked once a minute
+  renderRuns();
+}
+$("tabs").querySelector('[data-tab="machines"]').addEventListener("click", () => setTab("machines"));
+try { R.tab = localStorage.getItem("fleet-dash-tab") || "machines"; } catch (e) {}
+setTab(R.tab); pollRuns();
 
 let lastMsg = 0;
 const es = new EventSource("/events");

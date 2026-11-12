@@ -72,6 +72,9 @@ STALE = 15            # no sample for this long = offline
 HUNG = 30             # no sample for this long while the agent process is alive = kill and reconnect
 LIVE_POINTS = 300     # 15 min of live history at INTERVAL
 LONG_POINTS = 1440    # 24 h of one-minute aggregates
+RUNS_INTERVAL = 5     # seconds between runs probe lines
+RUNS_STALE = 20       # no runs line for this long = the probe is not reporting
+RUNS_POINTS = 360     # 30 min of throughput at RUNS_INTERVAL
 
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "ServerAliveInterval=5",
        "-o", "ServerAliveCountMax=2", "-o", "LogLevel=ERROR"]
@@ -163,10 +166,10 @@ VALUE_LISTS = {"cores", "load", "kinds"}                                        
 BIG = 1e15            # no real reading is larger; beyond it arithmetic overflows into Infinity or OverflowError
 
 
-def _scalar(v, key):
+def _scalar(v, key, text=None):
     """A text field keeps (capped) text; every other field is a finite, sane number, a bool or None."""
     if isinstance(v, str):
-        return v[:200] if key in TEXT_KEYS else None
+        return v[:200] if key in (text or TEXT_KEYS) else None
     if isinstance(v, bool):
         return v
     if isinstance(v, (int, float)):
@@ -174,26 +177,34 @@ def _scalar(v, key):
     return None
 
 
-def clean(sample, dicts=DICT_KEYS, rows=ROW_LISTS):
+# A runs probe line (runs_linux.py): what a GPU box is running. Same rebuild, its own schema.
+RUNS_TEXT = {"model", "path", "cmd", "cwd", "tail"}
+RUNS_DICTS = {"vllm", "lock"}
+RUNS_ROWS = {"jobs", "runs"}
+RUNS_VALUES = {"tail"}
+
+
+def clean(sample, dicts=DICT_KEYS, rows=ROW_LISTS, text=None, values=None):
     """Rebuild an agent sample against the schema: text only in TEXT_KEYS, dicts and row lists only where the
     schema names them at that depth (a GPU row's "power" is a number, the top-level "power" is a dict), scalar
     lists only under VALUE_LISTS. Anything else becomes None, so the code downstream never meets a dict where it
     expects a number. A single item where a list belongs is re-wrapped: PowerShell unwraps one-element arrays."""
     if not isinstance(sample, dict):
         raise ValueError("an agent sample must be a JSON object")
+    text, values = text or TEXT_KEYS, values or VALUE_LISTS
     out = {}
     for k, v in list(sample.items())[:64]:
         k = str(k)[:40]
         if k in rows:
             items = v if isinstance(v, list) else [v]
-            out[k] = None if v is None else [clean(r, (), ()) for r in items[:256] if isinstance(r, dict)]
-        elif k in VALUE_LISTS:
+            out[k] = None if v is None else [clean(r, (), (), text, values) for r in items[:256] if isinstance(r, dict)]
+        elif k in values:
             vals = v if isinstance(v, list) else [v]
-            out[k] = None if v is None else [_scalar(x, k) for x in vals[:256]]
+            out[k] = None if v is None else [_scalar(x, k, text) for x in vals[:256]]
         elif k in dicts:
-            out[k] = clean(v, NESTED_DICTS.get(k, ()), ()) if isinstance(v, dict) else None
+            out[k] = clean(v, NESTED_DICTS.get(k, ()), (), text, values) if isinstance(v, dict) else None
         else:
-            out[k] = _scalar(v, k)
+            out[k] = _scalar(v, k, text)
     return out
 
 
@@ -368,6 +379,10 @@ class Fleet:
                               "live": collections.deque(maxlen=LIVE_POINTS), "n_live": 0,
                               "long": collections.deque(old[d["id"]], maxlen=LONG_POINTS), "n_long": 0,
                               "bucket": [], "proc": None, "started": 0.0, "kind": d["kind"]} for d in devices}
+        # Devices with a "runs" entry in devices.json also get a runs probe (runs_linux.py): its last line and
+        # 30 minutes of server throughput, worked out here from the token counters.
+        self.runs = {d["id"]: {"label": d["label"], "sample": None, "seen": 0.0, "error": None,
+                               "rate": collections.deque(maxlen=RUNS_POINTS)} for d in devices if d.get("runs")}
 
     def _bump(self):
         self.version += 1
@@ -388,6 +403,29 @@ class Fleet:
             d["live"].append(point)
             d["n_live"] += 1
             self._bump()
+
+    def ingest_runs(self, dev_id, sample):
+        """One runs probe line: rebuilt against the runs schema, then tokens/s from the counters' change since the
+        last line (a vLLM restart resets the counters; that step is skipped, not shown as a negative rate)."""
+        r = self.runs[dev_id]
+        s = clean(sample, RUNS_DICTS, RUNS_ROWS, RUNS_TEXT, RUNS_VALUES)
+        s["t"] = time.time()
+        v, prev = s.get("vllm") or {}, (r["sample"] or {}).get("vllm") or {}
+        dt = s["t"] - r["seen"] if r["seen"] else 0
+        for key, out in (("gen_total", "gen_tps"), ("prompt_total", "prompt_tps")):
+            a, b = prev.get(key), v.get(key)
+            v[out] = round((b - a) / dt, 1) if dt > 0 and isinstance(a, (int, float)) and isinstance(b, (int, float)) and b >= a else None
+        with self.cond:
+            if v.get("up"):
+                r["rate"].append([round(s["t"], 1), v.get("gen_tps"), v.get("prompt_tps"), v.get("running"), v.get("waiting")])
+            r["sample"], r["seen"], r["error"] = s, s["t"], None
+
+    def runs_snapshot(self):
+        with self.cond:
+            return {"t": time.time(), "interval": RUNS_INTERVAL, "stale": RUNS_STALE,
+                    "devices": [{"id": i, "label": r["label"], "seen": r["seen"], "error": r["error"],
+                                 "online": time.time() - r["seen"] < RUNS_STALE, "sample": r["sample"],
+                                 "rate": list(r["rate"])} for i, r in self.runs.items()]}
 
     def _close_minute(self, dev_id):
         d = self.dev[dev_id]
@@ -512,6 +550,52 @@ def run_device(fleet, dev):
         backoff = 2 if ran > 60 else min(30, backoff * 2)
 
 
+def runs_command(dev, alias):
+    """(argv, stdin text) for the runs probe: the device's "runs" settings go in front of the script as CONFIG."""
+    cfg = dev["runs"] if isinstance(dev["runs"], dict) else {}
+    script = f"import json as _j\nCONFIG = _j.loads({json.dumps(cfg)!r})\n" + (HERE / "runs_linux.py").read_text()
+    cmd = f"python3 -u - {RUNS_INTERVAL} {MAX_LIFE}"
+    return (cmd.split() if not alias else SSH + [alias, cmd]), script
+
+
+def run_runs(fleet, dev):
+    """Keep the runs probe alive for a Linux device, like run_device: reconnect with backoff, try each alias."""
+    r, backoff, route = fleet.runs[dev["id"]], 2, 0
+    while True:
+        started, got, error = time.time(), 0, None
+        alias = aliases(dev)[route % len(aliases(dev))]
+        try:
+            kind = detect_kind(alias) if dev["kind"] == "auto" else dev["kind"]
+            if kind != "linux":
+                r["error"] = f"runs need Linux; this machine is {kind or 'unreachable'} now"
+                route += 1
+                time.sleep(30)
+                continue
+            argv, script = runs_command(dev, alias)
+            p = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            threading.Thread(target=_feed, args=(p, script), daemon=True).start()
+            for line in p.stdout:
+                if not line.startswith(b"{"):
+                    continue
+                try:
+                    fleet.ingest_runs(dev["id"], json.loads(line))
+                    got += 1
+                except Exception as e:          # untrusted input: reported, never fatal
+                    error = f"bad runs line: {e!r}"[:200]
+            p.wait()
+        except (OSError, subprocess.SubprocessError) as e:
+            error = str(e) or repr(e)
+        ran = time.time() - started
+        if got and ran >= MAX_LIFE * 0.8:
+            backoff = 2
+            continue
+        r["error"] = error or "runs probe stopped"
+        if not got:
+            route += 1
+        time.sleep(backoff)
+        backoff = 2 if ran > 60 else min(30, backoff * 2)
+
+
 def _feed(p, script):
     try:
         p.stdin.write(script.encode())
@@ -557,6 +641,8 @@ def make_handler(fleet, names):
                 return self.send_error(403, "Host not allowed (see --allow-host)")
             if self.path == "/api/state":
                 return self._send(json.dumps(fleet.snapshot()).encode(), "application/json")
+            if self.path == "/api/runs":
+                return self._send(json.dumps(fleet.runs_snapshot()).encode(), "application/json")
             if self.path.startswith("/fonts/") and self.path[7:] in FONTS:           # exact names only: no paths, no ..
                 return self._send((HERE / "fonts" / self.path[7:]).read_bytes(), "font/woff2")
             if self.path.startswith("/assets/") and self.path[8:] in ASSETS:
@@ -612,6 +698,8 @@ if __name__ == "__main__":
     fleet = Fleet(devices, a.history)
     for dev in devices:
         threading.Thread(target=run_device, args=(fleet, dev), daemon=True).start()
+        if dev.get("runs") and dev.get("via", "ssh") == "ssh" and dev.get("ssh"):
+            threading.Thread(target=run_runs, args=(fleet, dev), daemon=True).start()
     threading.Thread(target=fleet.watchdog, daemon=True).start()
     print(f"fleet dashboard on http://{a.host}:{a.port}", flush=True)
     ThreadingHTTPServer((a.host, a.port), make_handler(fleet, own_names() | {n.lower() for n in a.allow_host})).serve_forever()
