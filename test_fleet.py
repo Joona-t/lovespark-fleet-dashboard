@@ -520,5 +520,100 @@ class Server(unittest.TestCase):
         (HERE / "agent_win.ps1").read_bytes().decode("ascii")
 
 
+
+# vLLM's /metrics as served on 2026-11-12 (Qwen FP8 on two cards), trimmed to the lines the probe reads and two it ignores.
+METRICS = """# HELP vllm:num_requests_running Number of requests in model execution batches.
+vllm:num_requests_running{engine="0",model_name="qwen-fp8"} 8.0
+vllm:num_requests_waiting{engine="0",model_name="qwen-fp8"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="qwen-fp8",reason="capacity"} 0.0
+vllm:kv_cache_usage_perc{engine="0",model_name="qwen-fp8"} 0.5791855203619909
+vllm:prompt_tokens_total{engine="0",model_name="qwen-fp8"} 1.7319846e+07
+vllm:generation_tokens_total{engine="0",model_name="qwen-fp8"} 3.420233e+06
+"""
+RUNS_DEV = {"id": "box", "label": "GPU box", "kind": "linux", "ssh": "box", "runs": {"vllm": "http://127.0.0.1:8011", "lock": None}}
+
+
+class Runs(unittest.TestCase):
+    def test_probe_reads_vllm_metrics_and_ignores_the_rest(self):
+        import runs_linux as rl
+        m = rl.parse_metrics(METRICS)
+        self.assertEqual((m["running"], m["waiting"], m["kv"], m["model"]), (8.0, 0.0, 57.9, "qwen-fp8"))
+        self.assertEqual((m["gen_total"], m["prompt_total"]), (3420233.0, 17319846.0))
+
+    def test_probe_writes_home_paths_as_tilde_and_strips_terminal_codes(self):
+        import runs_linux as rl
+        self.assertEqual(rl.tilde(rl.HOME + "/work/run.log"), "~/work/run.log")
+        self.assertEqual(rl.tilde("/var/log/x.log"), "/var/log/x.log")
+        self.assertEqual(rl.tilde(rl.HOME + "x/y"), rl.HOME + "x/y")          # a sibling folder is not home
+        with tempfile.NamedTemporaryFile("w", suffix=".log", delete=False) as f:
+            f.write("one\n\x1b[32mtwo\x1b[0m\n\nprogress 10%\rprogress 90%\n" + "x" * 300 + "\n")
+        try:
+            self.assertEqual(rl.tail(f.name, 3), ["two", "progress 90%", "x" * 160])
+        finally:
+            os.unlink(f.name)
+
+    def test_devices_json_settings_reach_the_probe_as_python(self):
+        argv, script = fd.runs_command(RUNS_DEV, "box")        # JSON null must arrive as None, not a NameError
+        self.assertEqual(argv[-1], f"python3 -u - {fd.RUNS_INTERVAL} {fd.MAX_LIFE}")
+        ns = {"__name__": "probe"}
+        exec(compile(script, "runs_linux.py", "exec"), ns)
+        self.assertEqual(ns["CFG"]["vllm"], "http://127.0.0.1:8011")
+        self.assertIsNone(ns["CFG"]["lock"])
+        self.assertEqual(ns["CFG"]["max_runs"], 12)                # defaults fill what devices.json leaves out
+
+    def test_runs_rate_comes_from_counter_changes_and_skips_a_restart(self):
+        with tempfile.TemporaryDirectory() as d:
+            f = fd.Fleet([RUNS_DEV], d)
+            t = [1000.0]
+            with mock.patch.object(fd.time, "time", lambda: t[0]):
+                f.ingest_runs("box", {"vllm": {"up": True, "gen_total": 1000, "prompt_total": 50}})
+                t[0] = 1005.0
+                f.ingest_runs("box", {"vllm": {"up": True, "gen_total": 2000, "prompt_total": 550}})
+                v = f.runs["box"]["sample"]["vllm"]
+                self.assertEqual((v["gen_tps"], v["prompt_tps"]), (200.0, 100.0))
+                t[0] = 1010.0
+                f.ingest_runs("box", {"vllm": {"up": True, "gen_total": 10, "prompt_total": 5}})   # vLLM restarted
+                self.assertIsNone(f.runs["box"]["sample"]["vllm"]["gen_tps"])
+                snap = f.runs_snapshot()
+            self.assertEqual([p[1] for p in snap["devices"][0]["rate"]], [None, 200.0, None])
+            self.assertTrue(snap["devices"][0]["online"])
+
+    def test_hostile_runs_lines_are_rebuilt_against_the_runs_schema(self):
+        with tempfile.TemporaryDirectory() as d:
+            f = fd.Fleet([RUNS_DEV], d)
+            f.ingest_runs("box", {"vllm": {"up": True, "running": "<img src=x>", "model": "m" * 999, "gen_total": {"a": 1}},
+                                  "lock": "<b>", "jobs": [{"pid": [1], "cmd": "<script>", "age": 1e300}, "junk"],
+                                  "runs": {"path": "~/a.log", "tail": ["ok", {"x": 1}, 5], "size": float("nan")},
+                                  "extra": "<i>text outside the schema</i>"})
+            s = f.runs["box"]["sample"]
+        self.assertIsNone(s["vllm"]["running"]); self.assertEqual(len(s["vllm"]["model"]), 200)
+        self.assertIsNone(s["vllm"]["gen_total"]); self.assertIsNone(s["lock"]); self.assertIsNone(s["extra"])
+        self.assertEqual(s["jobs"], [{"pid": None, "cmd": "<script>", "age": None}])     # text stays text; the page escapes it
+        self.assertEqual(s["runs"], [{"path": "~/a.log", "tail": ["ok", None, 5], "size": None}])
+
+    def test_runs_api_lists_only_devices_with_runs(self):
+        from http.server import ThreadingHTTPServer
+        import urllib.request
+        with tempfile.TemporaryDirectory() as d:
+            f = fd.Fleet([RUNS_DEV, {"id": "mac", "label": "Mac", "kind": "mac", "ssh": None}], d)
+            srv = ThreadingHTTPServer(("127.0.0.1", 0), fd.make_handler(f, {"localhost"}))
+            threading.Thread(target=srv.serve_forever, daemon=True).start()
+            try:
+                body = json.loads(urllib.request.urlopen(f"http://127.0.0.1:{srv.server_address[1]}/api/runs").read())
+            finally:
+                srv.shutdown()
+        self.assertEqual([x["id"] for x in body["devices"]], ["box"])
+        self.assertFalse(body["devices"][0]["online"])
+
+    def test_runs_probe_runs_for_real_and_prints_one_line_per_tick(self):
+        cfg = 'import json as _j\nCONFIG = _j.loads(\'{"vllm": null, "roots": ["%s"]}\')\n' % HERE
+        if sys.platform != "linux":
+            self.skipTest("the probe reads /proc")
+        out = subprocess.run([sys.executable, "-u", "-", "0.3", "1"], input=cfg + (HERE / "runs_linux.py").read_text(),
+                             capture_output=True, text=True, timeout=30).stdout.splitlines()
+        self.assertGreaterEqual(len(out), 2)
+        self.assertIsNone(json.loads(out[0])["vllm"])
+
+
 if __name__ == "__main__":
     unittest.main()

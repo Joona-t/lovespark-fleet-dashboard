@@ -38,6 +38,9 @@ Opus 5.5). It is part of [LoveSpark](https://github.com/Joona-t), free and open-
   Studio: Cream, the dark Basalt, and Glyph Cream and Glyph Basalt: stardust, twinkling sparkles, embers and a
   charcoal glyph-art title made with the studio's renderer (Cinzel and EB Garamond, film grain).
 - **Laptops welcome**: a laptop pushes its readings while it is around instead of having to be reachable.
+- **Training runs tab** for a Linux GPU box: vLLM's live requests, tokens per second writing and reading and KV
+  cache use (from its own `/metrics`), who holds the GPU lock, the run processes, and every run log written in the
+  last day with its last lines, plus 30 minutes of throughput. Turn it on per machine with a `runs` entry.
 
 ![The full stats of a dual RTX 3090 machine: per-core CPU, memory, both GPUs with charts, sensors and storage](docs/full-stats.png)
 
@@ -66,6 +69,11 @@ Open http://127.0.0.1:8766.
      {"id": "gpu-box", "label": "GPU box",   "kind": "auto", "ssh": ["gpu-box-linux", "gpu-box-windows"]}
    ]
    ```
+
+   A Linux machine can also get a **training runs** tab: add `"runs": {"vllm": "http://127.0.0.1:8000", "lock":
+   "~/.gpu.lock", "roots": ["~/runs"]}` to it (all optional: `vllm` is the server's base URL, `lock` a flock file,
+   `roots` the folders searched for `.log` and `.jsonl` files, `jobs` a regex for run processes). `runs_linux.py`
+   is piped over SSH like the agents and reports every 5 s; paths under home leave the machine as `~/...`.
 
    `kind` is `mac`, `linux`, `win`, or `auto` (asked with `uname` on every connect, for a dual-boot machine). `ssh` can
    be a list of aliases tried in turn, one per OS, since each install has its own host key. `devices.json` is in

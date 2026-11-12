@@ -25,6 +25,14 @@
     "ssh": [
       "gpu-box-linux",
       "gpu-box-windows"
-    ]
+    ],
+    "runs": {
+      "vllm": "http://127.0.0.1:8000",
+      "lock": "~/.gpu.lock",
+      "roots": [
+        "~/runs",
+        "~/evals"
+      ]
+    }
   }
 ]
