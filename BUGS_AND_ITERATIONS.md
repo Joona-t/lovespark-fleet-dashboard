@@ -1,18 +1,5 @@
 # Bugs & Iterations — Fleet Dashboard
 
-
-## 2026-11-12: ITER: Training runs tab for a Linux GPU box
-
-**Change:** Joona wanted to see what the dual-GPU box is running. A new tab, "<label> training runs", appears for each
-device with a `runs` entry in devices.json. `runs_linux.py` (piped over SSH, nothing installed) streams one line every
-5 s: vLLM's requests running and waiting, KV cache use and token counters from its `/metrics`; the holder of the GPU
-lock from `/proc/locks`; processes matching a job regex; and log files written in the last day under the run folders,
-with their last three lines (a progress bar shows its last state, terminal colour codes removed, home paths as `~`).
-The server rebuilds each line through `clean()` with its own schema, works out tokens/s from the counters (a vLLM
-restart's reset is skipped, not drawn as a negative rate) and serves `/api/runs`; the tab polls it every 5 s.
-**Cost on the box:** 16 ms per tick, 133 ms on the ticks that rescan the run folders (every 30 s).
-**Tests:** 7 new (schema against hostile lines, the rate maths, metrics parsing, `~` paths and tails, config reaching
-the probe as Python, the API listing only runs devices, a real probe run on Linux); 49 pass on Python 3.15 and 3.9.
 ## 2026-11-12: v1.3.0, Glyph themes with stardust, embers and glyph-art titles
 
 - **What:** Glyph Cream and Glyph Basalt now have stardust, twinkling sparkles, embers and a glow (Basalt only, stopped in every other theme), and the title as charcoal glyph art built with Glyph Grid Studio's renderer (`tools/build_charcoal.py`): a looping video in Basalt, dark-ink stills on Cream, loaded only when a Glyph theme is chosen. An exact-name `/assets/` route serves them, with byte ranges for Safari.
