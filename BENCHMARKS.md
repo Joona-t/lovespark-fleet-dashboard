@@ -64,3 +64,10 @@ it (so its floor is two frames, ~25 ms at 60 Hz).
 
 No measurable difference between themes: every update is painted within the next two frames. p95 stays under 4 ms of
 script and 34 ms to a frame. Server to browser was ~2 ms median on a home LAN (the two clocks agreed to ±100 ms only).
+
+### The Glyph themes
+
+The glyph backdrop is drawn once on a canvas when the theme is chosen or the window resizes (8–15 ms), never per
+update. A second run (5 rounds, ~30 updates each; this Mac was busier, so frames took ~45–50 ms for every theme,
+Paper included) showed the same script time for Glyph Cream and Glyph Basalt as for Cream, Basalt and Paper: 0.4 ms
+in the grid, ~3 ms with full stats open. No measurable difference.

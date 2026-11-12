@@ -33,9 +33,10 @@ Opus 5.5). It is part of [LoveSpark](https://github.com/Joona-t), free and open-
 - **Alerts**: hot GPU or CPU, VRAM or memory nearly full, low disk, a stopped fan at temperature, thermal throttling,
   a machine offline.
 - **15-minute and 24-hour charts**, history kept on disk, so a restart loses nothing.
-- **2x2 layout**: one machine per corner; tap a machine for its full stats. Seven themes: Paper, four Korean ones
-  (서울 Seoul Y2K, 깅엄 Gingham, 모찌 Holo Mochi, the dark 네온 Neon Usagi), and Cream and the dark Basalt
-  from LoveSpark's Glyph Grid Studio (Cinzel and EB Garamond, film grain).
+- **2x2 layout**: one machine per corner; tap a machine for its full stats. Nine themes: Paper, four Korean ones
+  (서울 Seoul Y2K, 깅엄 Gingham, 모찌 Holo Mochi, the dark 네온 Neon Usagi), and four from LoveSpark's Glyph Grid
+  Studio: Cream, the dark Basalt, and Glyph Cream and Glyph Basalt with the studio's glyph art behind the page
+  (Cinzel and EB Garamond, film grain).
 - **Laptops welcome**: a laptop pushes its readings while it is around instead of having to be reachable.
 
 ![The full stats of a dual RTX 3090 machine: per-core CPU, memory, both GPUs with charts, sensors and storage](docs/full-stats.png)

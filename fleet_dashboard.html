@@ -16,7 +16,9 @@
   --bg:#17130F; --card:#211B16; --ink:#F1E9DA; --dim:#A39684; --line:#3A3129;
   --pc:#6AA6E8; --mini:#B48AD9; --ok:#5CC48A; --warn:#F08A4B; --amber:#E7B24A; --fix:#F06B5E; } }
 *{box-sizing:border-box} body{margin:0;background:var(--page-bg);background-attachment:fixed;min-height:100vh;color:var(--ink);font:15px/1.45 var(--sans)}
-main{max-width:1720px;margin:0 auto;padding:22px 16px 40px}
+main{max-width:1720px;margin:0 auto;padding:22px 16px 40px;position:relative;z-index:2}
+#glyphs{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;display:none}
+:root[data-glyph] #glyphs{display:block}
 header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
 h1{font-size:26px;margin:0;letter-spacing:-.01em} .sub{color:var(--dim)}
 .live{display:inline-flex;align-items:center;gap:7px;color:var(--dim);font-size:13px;margin-left:auto}
@@ -137,6 +139,7 @@ footer{margin-top:18px;font-size:12px;color:var(--dim)}
 </style>
 </head>
 <body>
+<canvas id="glyphs" aria-hidden="true"></canvas>
 <main>
   <header>
     <h1>Fleet</h1><span class="sub" id="sub">all machines, live</span>
@@ -152,6 +155,8 @@ footer{margin-top:18px;font-size:12px;color:var(--dim)}
       <button type="button" data-theme="kr-neon"><span class="sw" style="background:linear-gradient(135deg,#120b18 50%,#ff46d6 50%)"></span>네온 Neon Usagi</button>
       <button type="button" data-theme="cream"><span class="sw" style="background:linear-gradient(135deg,#efe6d2 50%,#54653f 50%)"></span>Cream</button>
       <button type="button" data-theme="basalt"><span class="sw" style="background:linear-gradient(135deg,#16171a 50%,#d9a23b 50%)"></span>Basalt</button>
+      <button type="button" data-theme="glyph-cream"><span class="sw" style="background:linear-gradient(135deg,#efe6d2 50%,#332b1d 50%)"></span>Glyph Cream</button>
+      <button type="button" data-theme="glyph-basalt"><span class="sw" style="background:linear-gradient(135deg,#16171a 50%,#e6c277 50%)"></span>Glyph Basalt</button>
     </div>
     <span class="live"><span class="dot stale" id="dot"></span><span id="age">connecting…</span></span>
   </header>
@@ -396,7 +401,37 @@ function pick(groupId, attr, value, store){
 $("devices").addEventListener("click", e => { const b = e.target.closest("[data-id]"); if (b) openDev(b.dataset.id); });
 $("detail").addEventListener("click", e => { if (e.target.closest("[data-close]")) { const id = S.open; openDev(S.open); const b = $("devices").querySelector(`[data-id="${CSS.escape(id)}"]`); if (b) b.focus(); } });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && S.open) openDev(S.open); });
-function setTheme(t){ if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; pick("themes", "theme", t || "", "fleet-dash-theme"); }
+/* Glyph themes: Cream or Basalt with a Glyph Grid Studio backdrop, a radial field of the studio's "gradient" ramp
+   drawn once on a canvas behind the page (again only on resize), so a live update costs nothing extra. */
+const RAMP = "  .,:;-~+=<>*oOwmM8B#%@";
+function drawGlyphs(){
+  const c = $("glyphs"), root = document.documentElement;
+  if (!root.dataset.glyph) return;
+  const dpr = devicePixelRatio || 1, W = innerWidth, H = innerHeight;
+  c.width = W * dpr; c.height = H * dpr;
+  const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const basalt = root.dataset.theme === "basalt", cw = 7, ch = 12;
+  g.font = `11px ui-monospace, Menlo, monospace`; g.textBaseline = "top";
+  g.fillStyle = basalt ? "rgba(230,194,119,.30)" : "rgba(51,43,29,.26)";
+  const cx = W * .72, cy = H * .42, R = Math.max(W, H) * .62;
+  const hash = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
+  for (let y = 0; y < H; y += ch) for (let x = 0; x < W; x += cw) {
+    const dx = (x - cx) / R, dy = (y - cy) / R, r = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
+    const rings = .5 + .5 * Math.cos(r * 22), rays = Math.pow(.5 + .5 * Math.cos(a * 16), 3), fall = Math.max(0, 1 - r * 1.05);
+    let v = fall * fall * (.4 * rings + .6 * rays) + fall * .25 + (hash(x, y) - .5) * .3;
+    if (v < .16) continue;
+    g.fillText(RAMP[Math.min(RAMP.length - 1, Math.floor(v * RAMP.length * .9))], x, y);
+  }
+}
+let glyphTimer = 0;
+addEventListener("resize", () => { clearTimeout(glyphTimer); glyphTimer = setTimeout(drawGlyphs, 150); });
+function setTheme(t){
+  const root = document.documentElement, glyph = (t || "").startsWith("glyph-"), base = glyph ? t.slice(6) : t;
+  if (base) root.dataset.theme = base; else delete root.dataset.theme;
+  if (glyph) root.dataset.glyph = "on"; else delete root.dataset.glyph;
+  pick("themes", "theme", t || "", "fleet-dash-theme");
+  drawGlyphs();
+}
 function setWin(w){ S.win = w; pick("windows", "win", w, "fleet-dash-window"); if (S.devices.length) render(); }
 document.querySelectorAll("#themes button").forEach(b => b.addEventListener("click", () => setTheme(b.dataset.theme)));
 document.querySelectorAll("#windows button").forEach(b => b.addEventListener("click", () => setWin(b.dataset.win)));

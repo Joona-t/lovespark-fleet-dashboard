@@ -1,5 +1,10 @@
 # Bugs & Iterations — Fleet Dashboard
 
+## 2026-11-12: v1.2.0, Glyph Cream and Glyph Basalt
+
+- **What:** Cream and Basalt with Glyph Grid Studio's glyph art behind the page: a radial field of the studio's gradient character ramp on a canvas, drawn once per theme change or resize.
+- **Verify:** drawn in 8–15 ms; per-update script time unchanged against the plain themes (BENCHMARKS.md); 41 tests pass.
+
 ## 2026-11-12: v1.1.0, Cream and Basalt themes
 
 - **What:** two themes from LoveSpark's Glyph Grid Studio: Cream (aged paper, sage) and Basalt (dark stone, ember gold), with Cinzel and EB Garamond (SIL OFL, `fonts/OFL.txt`) served by an exact-name `/fonts/` route, lining figures and film grain.

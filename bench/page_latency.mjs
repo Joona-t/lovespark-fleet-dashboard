@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 const URL = process.argv[2], ROUNDS = +(process.argv[3] || 5), UPDATES = 6;
-const THEMES = ["", "cream", "basalt", "kr-seoul", "kr-gingham", "kr-holo", "kr-neon"];
+const THEMES = process.env.THEMES ? process.env.THEMES.split(",").map(t => t === "paper" ? "" : t) : ["", "cream", "basalt", "glyph-cream", "glyph-basalt", "kr-seoul", "kr-gingham", "kr-holo", "kr-neon"];
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", PORT = 9300 + process.pid % 600;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
