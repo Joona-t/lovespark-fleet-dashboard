@@ -32,6 +32,13 @@ main{max-width:1720px;margin:0 auto;padding:22px 16px 40px;position:relative}  /
 :root[data-glyph] .h1-text{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 :root[data-glyph][data-theme="basalt"] .gt video{display:block;mix-blend-mode:screen}
 :root[data-glyph][data-theme="cream"] .gt img.ink{display:block}
+/* The glyph field: lovespark.love's background (assets/glyph-field.js, the same field as the Forge Lab Notebook),
+   drifting vertical hatching in the site's own ink and strength for parchment and basalt. Glyph themes only. */
+#glyphField{position:fixed;inset:0;z-index:-1;pointer-events:none;display:none;opacity:0;transition:opacity 1.2s ease}
+#glyphField.on{opacity:1}
+:root[data-glyph] #glyphField{display:block}
+:root[data-glyph][data-theme="cream"]{--field-ink:#5e3a24;--field-alpha:.13}
+:root[data-glyph][data-theme="basalt"]{--field-ink:#e6d6ad;--field-alpha:.11}
 @media (prefers-reduced-motion: reduce){#sparkles span{animation:none}
   :root[data-glyph][data-theme="basalt"] .gt video{display:none} :root[data-glyph][data-theme="basalt"] .gt img.gold{display:block}}
 header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
@@ -153,11 +160,49 @@ footer{margin-top:18px;font-size:12px;color:var(--dim)}
 :root[data-theme="basalt"] .badge{background:linear-gradient(180deg,#d9a23b,#a8761f);color:#16171a}
 :root[data-theme="cream"] body::after,:root[data-theme="basalt"] body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:160px 160px;mix-blend-mode:soft-light;opacity:calc(.10 * (var(--grain) + .45))}
+/* Theme & font menu: the Forge Lab Notebook's menu. */
+.picker{position:relative}
+#theme-btn{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:0 13px;border:1px solid var(--line);border-radius:999px;background:var(--card);
+  color:var(--ink);font:600 12px var(--sans);cursor:pointer;white-space:nowrap}
+#theme-btn span[aria-hidden]{font-size:14px}
+#theme-btn:hover,#theme-btn[aria-expanded="true"]{border-color:var(--ink)}
+#theme-menu{position:absolute;right:0;top:calc(100% + 8px);z-index:60;min-width:250px;max-width:calc(100vw - 32px);padding:10px;
+  max-height:calc(100vh - 120px);overflow-y:auto;overscroll-behavior:contain;background:var(--card);border:1px solid var(--line);border-radius:12px;
+  box-shadow:0 14px 34px rgba(0,0,0,.22)}
+#theme-menu .menu-label{margin:6px 8px;font:600 10.5px/1.3 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+#theme-menu button{display:flex;align-items:center;gap:10px;width:100%;min-height:36px;padding:6px 8px;border:0;border-radius:6px;background:none;
+  color:var(--ink);font:15px/1.2 var(--sans);text-align:left;cursor:pointer;white-space:nowrap}
+#theme-menu button:hover,#theme-menu button[aria-checked="true"]{background:color-mix(in srgb,var(--line) 55%,transparent)}
+#theme-menu button[aria-checked="true"]::after{content:"✓";margin-left:auto;padding-left:8px;color:var(--amber)}
+#theme-menu .ko{margin-left:auto;padding-left:12px;font-size:12px;color:var(--dim)}
+#theme-menu button:has(.ko)[aria-checked="true"]::after{margin-left:8px;padding-left:0}
+#theme-menu hr{border:0;border-top:1px solid var(--line);margin:8px 0}
+#theme-menu .sw{width:14px;height:14px;border-radius:50%;flex:none;border:1px solid var(--dim)}
+.fp{width:22px;text-align:center;flex:none;font-size:15px}
+.fp--theme{font-family:var(--sans)} .fp--serif{font-family:"EB Garamond",Georgia,serif} .fp--sans{font-family:"Avenir Next",Avenir,-apple-system,system-ui,sans-serif}
+.fp--dyslexic{font-family:"OpenDyslexic",system-ui,sans-serif;font-size:13px} .fp--lexend{font-family:"Lexend",system-ui,sans-serif}
+.fp--comfortaa{font-family:"Comfortaa",sans-serif} .fp--atkinson{font-family:"Atkinson Hyperlegible",sans-serif}
+@media (max-width:680px){ #theme-menu{left:0;right:auto} }
+@media (max-width:520px){ .pick-text{display:none} }
+/* Reading fonts (SIL OFL, served from /fonts): override each theme's own text font; OpenDyslexic also takes the headings. */
+@font-face{font-family:"OpenDyslexic";src:url(/fonts/opendyslexic.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"OpenDyslexic";src:url(/fonts/opendyslexic-bold.woff2) format("woff2");font-weight:600 700;font-display:swap}
+@font-face{font-family:"Comfortaa";src:url(/fonts/comfortaa.woff2) format("woff2");font-weight:300 700;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible";src:url(/fonts/atkinson.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible";src:url(/fonts/atkinson-bold.woff2) format("woff2");font-weight:600 700;font-display:swap}
+:root[data-font="serif"]{--sans:"EB Garamond",Georgia,serif}
+:root[data-font="sans"]{--sans:"Avenir Next",Avenir,-apple-system,system-ui,sans-serif}
+:root[data-font="dyslexic"]{--sans:"OpenDyslexic",system-ui,sans-serif}
+:root[data-font="lexend"]{--sans:"Lexend","Avenir Next",system-ui,sans-serif}
+:root[data-font="comfortaa"]{--sans:"Comfortaa","Trebuchet MS",sans-serif}
+:root[data-font="atkinson"]{--sans:"Atkinson Hyperlegible","Trebuchet MS",sans-serif}
+:root[data-font="dyslexic"] :is(h1,h3,.badge,.k){font-family:"OpenDyslexic",system-ui,sans-serif}
+:root[data-font="dyslexic"] body{font-size:14px;line-height:1.6}
 @media (prefers-reduced-motion: reduce){ .dot{animation:none} .bar>i,.cores>i{transition:none} }
 </style>
 </head>
 <body>
-<canvas id="dust" aria-hidden="true"></canvas><div id="sparkles" aria-hidden="true"></div><canvas id="embers" aria-hidden="true"></canvas><div id="glow" aria-hidden="true"></div>
+<canvas id="glyphField" aria-hidden="true"></canvas><canvas id="dust" aria-hidden="true"></canvas><div id="sparkles" aria-hidden="true"></div><canvas id="embers" aria-hidden="true"></canvas><div id="glow" aria-hidden="true"></div>
 <main>
   <header>
     <h1><span class="h1-text">Fleet</span><span class="gt" aria-hidden="true"><video class="star" data-src="/assets/fleet-star.mp4" muted loop playsinline preload="none"></video><img class="star gold" data-src="/assets/fleet-star.webp" alt=""><img class="star ink" data-src="/assets/fleet-star-ink.webp" alt=""><video class="title" data-src="/assets/fleet-title.mp4" muted loop playsinline preload="none"></video><img class="title gold" data-src="/assets/fleet-title.webp" alt=""><img class="title ink" data-src="/assets/fleet-title-ink.webp" alt=""></span></h1><span class="sub" id="sub">all machines, live</span>
@@ -165,16 +210,30 @@ footer{margin-top:18px;font-size:12px;color:var(--dim)}
       <button type="button" data-win="live">15 min</button>
       <button type="button" data-win="long">24 h</button>
     </div>
-    <div class="seg" role="group" aria-label="Theme" id="themes">
-      <button type="button" data-theme=""><span class="sw" style="background:linear-gradient(135deg,#F7F0E1 50%,#C98A16 50%)"></span>Paper</button>
-      <button type="button" data-theme="kr-seoul"><span class="sw" style="background:linear-gradient(135deg,#fdf9ff 50%,#ff5baa 50%)"></span>서울 Seoul Y2K</button>
-      <button type="button" data-theme="kr-gingham"><span class="sw" style="background:linear-gradient(135deg,#fffafc 50%,#f6a6c4 50%)"></span>깅엄 Gingham</button>
-      <button type="button" data-theme="kr-holo"><span class="sw" style="background:linear-gradient(135deg,#faf7ff 50%,#9b6cf0 50%)"></span>모찌 Holo Mochi</button>
-      <button type="button" data-theme="kr-neon"><span class="sw" style="background:linear-gradient(135deg,#120b18 50%,#ff46d6 50%)"></span>네온 Neon Usagi</button>
-      <button type="button" data-theme="cream"><span class="sw" style="background:linear-gradient(135deg,#efe6d2 50%,#54653f 50%)"></span>Cream</button>
-      <button type="button" data-theme="basalt"><span class="sw" style="background:linear-gradient(135deg,#16171a 50%,#d9a23b 50%)"></span>Basalt</button>
-      <button type="button" data-theme="glyph-cream"><span class="sw" style="background:linear-gradient(135deg,#efe6d2 50%,#332b1d 50%)"></span>Glyph Cream</button>
-      <button type="button" data-theme="glyph-basalt"><span class="sw" style="background:linear-gradient(135deg,#16171a 50%,#e6c277 50%)"></span>Glyph Basalt</button>
+    <div class="picker">
+      <button id="theme-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="theme-menu" aria-label="Change theme and font"><span aria-hidden="true">◐</span><span class="pick-text">Theme &amp; font</span></button>
+      <div id="theme-menu" role="menu" aria-label="Theme and font" hidden>
+        <p class="menu-label">Theme</p>
+        <button type="button" role="menuitemradio" aria-checked="false" data-theme=""><span class="sw" style="background:linear-gradient(135deg,#F7F0E1 50%,#C98A16 50%)" aria-hidden="true"></span>Paper</button>
+        <button type="button" role="menuitemradio" aria-checked="false" data-theme="cream"><span class="sw" style="background:linear-gradient(135deg,#efe6d2 50%,#54653f 50%)" aria-hidden="true"></span>Cream</button>
+        <button type="button" role="menuitemradio" aria-checked="false" data-theme="basalt"><span class="sw" style="background:linear-gradient(135deg,#16171a 50%,#d9a23b 50%)" aria-hidden="true"></span>Basalt</button>
+        <button type="button" role="menuitemradio" aria-checked="false" data-theme="glyph-cream"><span class="sw" style="background:linear-gradient(135deg,#efe6d2 50%,#332b1d 50%)" aria-hidden="true"></span>Glyph Cream</button>
+        <button type="button" role="menuitemradio" aria-checked="false" data-theme="glyph-basalt"><span class="sw" style="background:linear-gradient(135deg,#16171a 50%,#e6c277 50%)" aria-hidden="true"></span>Glyph Basalt</button>
+        <p class="menu-label">Korean</p>
+        <button type="button" role="menuitemradio" aria-checked="false" data-theme="kr-seoul"><span class="sw" style="background:linear-gradient(135deg,#fdf9ff 50%,#ff5baa 50%)" aria-hidden="true"></span>Seoul Y2K<span class="ko" lang="ko">서울</span></button>
+        <button type="button" role="menuitemradio" aria-checked="false" data-theme="kr-gingham"><span class="sw" style="background:linear-gradient(135deg,#fffafc 50%,#f6a6c4 50%)" aria-hidden="true"></span>Gingham<span class="ko" lang="ko">깅엄</span></button>
+        <button type="button" role="menuitemradio" aria-checked="false" data-theme="kr-holo"><span class="sw" style="background:linear-gradient(135deg,#faf7ff 50%,#9b6cf0 50%)" aria-hidden="true"></span>Holo Mochi<span class="ko" lang="ko">모찌</span></button>
+        <button type="button" role="menuitemradio" aria-checked="false" data-theme="kr-neon"><span class="sw" style="background:linear-gradient(135deg,#120b18 50%,#ff46d6 50%)" aria-hidden="true"></span>Neon Usagi<span class="ko" lang="ko">네온</span></button>
+        <hr>
+        <p class="menu-label">Font</p>
+        <button type="button" role="menuitemradio" aria-checked="false" data-font=""><span class="fp fp--theme" aria-hidden="true">Aa</span>The theme's own</button>
+        <button type="button" role="menuitemradio" aria-checked="false" data-font="serif"><span class="fp fp--serif" aria-hidden="true">Aa</span>Serif</button>
+        <button type="button" role="menuitemradio" aria-checked="false" data-font="sans"><span class="fp fp--sans" aria-hidden="true">Aa</span>Sans</button>
+        <button type="button" role="menuitemradio" aria-checked="false" data-font="dyslexic"><span class="fp fp--dyslexic" aria-hidden="true">Aa</span>OpenDyslexic</button>
+        <button type="button" role="menuitemradio" aria-checked="false" data-font="lexend"><span class="fp fp--lexend" aria-hidden="true">Aa</span>Lexend</button>
+        <button type="button" role="menuitemradio" aria-checked="false" data-font="comfortaa"><span class="fp fp--comfortaa" aria-hidden="true">Aa</span>Comfortaa</button>
+        <button type="button" role="menuitemradio" aria-checked="false" data-font="atkinson"><span class="fp fp--atkinson" aria-hidden="true">Aa</span>Atkinson Hyperlegible</button>
+      </div>
     </div>
     <span class="live"><span class="dot stale" id="dot"></span><span id="age">connecting…</span></span>
   </header>
@@ -474,22 +533,53 @@ function glyphTitle(){
     if (m.tagName === "VIDEO") { if (want) m.play().catch(() => {}); else m.pause(); }
   });
 }
-function applyGlyph(){ drawDust(); drawSparkles(); glyphTitle(); embers(glyphTheme() === "basalt"); }
+function glyphField(){   /* lovespark.love's field, fetched the first time a Glyph theme is chosen */
+  if (!glyphTheme() || $("glyph-field-js")) return;
+  const s = document.createElement("script"); s.id = "glyph-field-js"; s.src = "/assets/glyph-field.js"; document.head.appendChild(s);
+}
+function applyGlyph(){ glyphField(); drawDust(); drawSparkles(); glyphTitle(); embers(glyphTheme() === "basalt"); }
 let glyphTimer = 0;
 addEventListener("resize", () => { clearTimeout(glyphTimer); glyphTimer = setTimeout(drawDust, 150); });
 function setTheme(t){
   const root = document.documentElement, glyph = (t || "").startsWith("glyph-"), base = glyph ? t.slice(6) : t;
   if (base) root.dataset.theme = base; else delete root.dataset.theme;
   if (glyph) root.dataset.glyph = "on"; else delete root.dataset.glyph;
-  pick("themes", "theme", t || "", "fleet-dash-theme");
+  checkMenu("theme", t || "", "fleet-dash-theme");
   applyGlyph();
 }
+function setFont(f){
+  if (f) document.documentElement.dataset.font = f; else delete document.documentElement.dataset.font;
+  checkMenu("font", f || "", "fleet-dash-font");
+}
+const themeBtn = $("theme-btn"), themeMenu = $("theme-menu");
+function checkMenu(attr, value, store){
+  themeMenu.querySelectorAll(`button[data-${attr}]`).forEach(b => b.setAttribute("aria-checked", String(b.dataset[attr] === value)));
+  try { localStorage.setItem(store, value); } catch (e) {}
+}
+function openMenu(open){
+  themeMenu.hidden = !open; themeBtn.setAttribute("aria-expanded", String(open)); themeMenu.style.translate = "";
+  if (!open) return;
+  const r = themeMenu.getBoundingClientRect(), over = Math.max(r.right - (innerWidth - 8), 0) || Math.min(r.left - 8, 0);
+  if (over) themeMenu.style.translate = `${-over}px 0`;   /* keep the open menu on screen wherever the header wrapped the button */
+  (themeMenu.querySelector('[aria-checked="true"]') || themeMenu.querySelector("button")).focus();
+}
+themeBtn.addEventListener("click", () => openMenu(themeMenu.hidden));
+themeMenu.addEventListener("click", e => {
+  const b = e.target.closest("#theme-menu button"); if (!b) return;
+  if ("theme" in b.dataset) setTheme(b.dataset.theme); else setFont(b.dataset.font);
+});
+themeMenu.addEventListener("keydown", e => {
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  const items = [...themeMenu.querySelectorAll("button")], i = items.indexOf(document.activeElement);
+  items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length].focus(); e.preventDefault();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !themeMenu.hidden) { openMenu(false); themeBtn.focus(); } });
+document.addEventListener("click", e => { if (!themeMenu.hidden && !e.target.closest(".picker")) openMenu(false); });
 function setWin(w){ S.win = w; pick("windows", "win", w, "fleet-dash-window"); if (S.devices.length) render(); }
-document.querySelectorAll("#themes button").forEach(b => b.addEventListener("click", () => setTheme(b.dataset.theme)));
 document.querySelectorAll("#windows button").forEach(b => b.addEventListener("click", () => setWin(b.dataset.win)));
-let savedTheme = "", savedWin = "live";
-try { savedTheme = localStorage.getItem("fleet-dash-theme") || ""; savedWin = localStorage.getItem("fleet-dash-window") || "live"; S.open = localStorage.getItem("fleet-dash-open") || null; } catch (e) {}
-setTheme(savedTheme); setWin(savedWin === "long" ? "long" : "live");
+let savedTheme = "", savedWin = "live", savedFont = "";
+try { savedFont = localStorage.getItem("fleet-dash-font") || ""; savedTheme = localStorage.getItem("fleet-dash-theme") || ""; savedWin = localStorage.getItem("fleet-dash-window") || "live"; S.open = localStorage.getItem("fleet-dash-open") || null; } catch (e) {}
+setTheme(savedTheme); setFont(savedFont); setWin(savedWin === "long" ? "long" : "live");
 
 let lastMsg = 0;
 const es = new EventSource("/events");

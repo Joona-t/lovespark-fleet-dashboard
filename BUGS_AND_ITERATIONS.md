@@ -1,5 +1,12 @@
 # Bugs & Iterations — Fleet Dashboard
 
+## 2026-11-13: v1.4.0, Glyph themes draw lovespark.love's glyph field; a Theme & font menu
+
+- **What:** Joona: the Glyph themes should be "the same as the glyph grid that we have on our LoveSpark site and that I have on the Forge journal", and the public dashboard should get a drop-down where the font can be changed.
+- **Glyph field:** Glyph Cream and Glyph Basalt now draw lovespark.love's background, `assets/glyph-field.js` copied from the site unchanged except that it re-tints on `data-theme`/`data-glyph` instead of the html class (the Forge Lab Notebook draws the same field). Same ink and strength as the site (cream #5e3a24 at .13, basalt #e6d6ad at .11). Stardust, sparkles, embers and the glyph-art title stay. The script is fetched the first time a Glyph theme is chosen and draws nothing in any other theme.
+- **Theme & font menu:** the nine theme pills became one drop-down (the notebook's menu: arrow keys, Escape, click outside), with a Font section: the theme's own, Serif, Sans, OpenDyslexic, Lexend, Comfortaa, Atkinson Hyperlegible. The four new font files are bundled from LoveSpark's own extensions (SIL OFL, notices in `fonts/OFL.txt`) and served by exact name; the font test now checks the served list equals the bundled files. OpenDyslexic also takes the headings, as in the notebook.
+- **Checked:** new `tools/check_layout.py` opens the dashboard in every theme and font from the menu at 1440, 768 and 390 px, in the grid and with full stats open (378 combinations). It caught the open menu running 3 px off a phone screen in the Glyph themes (the glyph title widens the header's first row); the menu now shifts itself back on screen. After: 0 problems. Screenshots reviewed in Glyph Cream, Glyph Basalt (real Chrome: Playwright's Chromium has no H.264, so the title video shows black there) and the menu on desktop and phone.
+
 ## 2026-11-12: v1.3.0, Glyph themes with stardust, embers and glyph-art titles
 
 - **What:** Glyph Cream and Glyph Basalt now have stardust, twinkling sparkles, embers and a glow (Basalt only, stopped in every other theme), and the title as charcoal glyph art built with Glyph Grid Studio's renderer (`tools/build_charcoal.py`): a looping video in Basalt, dark-ink stills on Cream, loaded only when a Glyph theme is chosen. An exact-name `/assets/` route serves them, with byte ranges for Safari.
