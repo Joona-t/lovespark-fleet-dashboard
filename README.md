@@ -33,8 +33,8 @@ Opus 5.5). It is part of [LoveSpark](https://github.com/Joona-t), free and open-
 - **Alerts**: hot GPU or CPU, VRAM or memory nearly full, low disk, a stopped fan at temperature, thermal throttling,
   a machine offline.
 - **15-minute and 24-hour charts**, history kept on disk, so a restart loses nothing.
-- **2x2 layout**: one machine per corner; tap a machine for its full stats. Five themes, including three Korean Y2K
-  ones (Seoul Y2K, Gingham, Holo Mochi) and a dark Neon.
+- **2x2 layout**: one machine per corner; tap a machine for its full stats. Five themes: Paper and four Korean ones
+  (서울 Seoul Y2K, 깅엄 Gingham, 모찌 Holo Mochi and the dark 네온 Neon Usagi).
 - **Laptops welcome**: a laptop pushes its readings while it is around instead of having to be reachable.
 
 ![The full stats of a dual RTX 3090 machine: per-core CPU, memory, both GPUs with charts, sensors and storage](docs/full-stats.png)
