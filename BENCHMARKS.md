@@ -75,14 +75,17 @@ in the grid, ~3 ms with full stats open. No measurable difference.
 ### What a theme costs while the page stays open
 
 `bench/theme_idle_cost.mjs <dashboard-url>`: Chrome's main-thread time per second, live updates and animations
-included, 5 rounds x 15 s alternating the themes:
+included, 5 rounds x 15 s alternating the themes (median [range]; 2026-11-13, MacBook Pro M1 Pro, load average 15
+falling to 6 during the run, which every theme shared):
 
 | Theme | Main thread | Of which script |
 |---|---|---|
-| Paper | 18.2 ms/s | 1.1 |
-| Basalt | 20.6 ms/s | 1.0 |
-| Glyph Basalt (embers, sparkles, title video) | 26.2 ms/s | 3.2 |
-| Cream | 16.9 ms/s | 0.9 |
-| Glyph Cream (sparkles, stills) | 27.5 ms/s | 0.9 |
+| Paper | 9.6 ms/s [7.8-24.6] | 0.2 |
+| Basalt | 8.8 ms/s [7.8-24.5] | 0.2 |
+| Glyph Basalt (glyph field, embers, sparkles, title video) | 23.3 ms/s [21.5-30.8] | 6.9 |
+| Cream | 8.7 ms/s [7.5-12.4] | 0.1 |
+| Glyph Cream (glyph field, sparkles, stills) | 24.3 ms/s [19.0-27.4] | 6.7 |
 
-The moving parts cost about 1% of one core; with "reduce motion" on they are stills.
+The Glyph themes cost about 1.5% of one core while the page stays open; the other themes under 1%. Most of the
+script is lovespark.love's glyph field (12 frames a second, only the cells whose glyph changed are redrawn): Glyph
+Cream's script time was 0.9 ms/s before it (2026-11-12) and 6.7 now. With "reduce motion" on everything is a still.

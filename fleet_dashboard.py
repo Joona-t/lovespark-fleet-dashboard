@@ -38,10 +38,13 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 PAGE = HERE / "fleet_dashboard.html"
-FONTS = {"cinzel.woff2", "ebgaramond.woff2", "lexend.woff2"}   # theme fonts (SIL OFL, fonts/OFL.txt); nothing else is served
+# theme and reading fonts (all SIL OFL, fonts/OFL.txt); nothing else is served
+FONTS = {"cinzel.woff2", "ebgaramond.woff2", "lexend.woff2", "opendyslexic.woff2", "opendyslexic-bold.woff2",
+         "comfortaa.woff2", "atkinson.woff2", "atkinson-bold.woff2"}
 # The Glyph themes' title art (tools/build_charcoal.py): exact names only, like the fonts.
 ASSETS = {f"{n}{v}": t for n in ("fleet-title", "fleet-star")
           for v, t in ((".webp", "image/webp"), ("-ink.webp", "image/webp"), (".mp4", "video/mp4"))}
+ASSETS["glyph-field.js"] = "text/javascript"   # the Glyph themes' background, the same field as lovespark.love
 
 PUSH = HERE / "push"                 # one named pipe per pushed device: push/<id>.fifo
 BEAT = HERE / "heartbeat.txt"        # rewritten once a minute, so a supervisor can see the server is doing its job

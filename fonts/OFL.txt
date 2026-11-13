@@ -1,6 +1,9 @@
 Cinzel: Copyright 2020 The Cinzel Project Authors (https://github.com/NDISCOVER/Cinzel)
 EB Garamond: Copyright 2017 The EB Garamond Project Authors (https://github.com/octaviopardo/EBGaramond12)
 Lexend: Copyright 2018 The Lexend Project Authors (https://github.com/googlefonts/lexend)
+OpenDyslexic: Copyright (c) 2019-07-29, Abbie Gonzalez (https://opendyslexic.org), with Reserved Font Name OpenDyslexic
+Comfortaa: Copyright 2011 The Comfortaa Project Authors (https://github.com/alexeiva/comfortaa)
+Atkinson Hyperlegible: Copyright 2020 Braille Institute of America, Inc. (https://www.brailleinstitute.org/freefont)
 
 These Font Software are licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

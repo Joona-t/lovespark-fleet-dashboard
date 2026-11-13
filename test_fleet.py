@@ -363,7 +363,8 @@ class Server(unittest.TestCase):
                     c.request("GET", path)
                     r = c.getresponse()
                     return r.getheader("Content-Type"), r.read()
-                for name in ("cinzel.woff2", "ebgaramond.woff2", "lexend.woff2"):
+                self.assertEqual(fd.FONTS, {p.name for p in (fd.HERE / "fonts").glob("*.woff2")})   # every bundled font, no other file
+                for name in sorted(fd.FONTS):
                     ctype, body = get("/fonts/" + name)
                     self.assertEqual((ctype, body[:4]), ("font/woff2", b"wOF2"))
                 for path in ("/fonts/../fleet_dashboard.py", "/fonts/OFL.txt", "/fonts/%2e%2e/test_fleet.py", "/fonts/", "/fonts/cinzel.woff2/x"):
@@ -390,6 +391,9 @@ class Server(unittest.TestCase):
                 self.assertEqual(get("/assets/fleet-title.mp4", "bytes=-10")[2], f"bytes {size - 10}-{size - 1}/{size}")
                 self.assertEqual(get("/assets/fleet-title.mp4", f"bytes={size}-")[0], 416)
                 self.assertEqual(get("/assets/fleet-star-ink.webp")[1], "image/webp")
+                st, ct, _, body = get("/assets/glyph-field.js")
+                self.assertEqual((st, ct), (200, "text/javascript"))
+                self.assertIn(b"getElementById('glyphField')", body)
                 for path in ("/assets/../fleet_dashboard.py", "/assets/x.mp4", "/assets/", "/assets/fleet-title.mp4/x"):
                     self.assertTrue(get(path)[1].startswith("text/html"), path)
             finally:
